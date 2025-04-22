@@ -8,7 +8,14 @@
     body { font-family: Arial, sans-serif; padding: 20px; text-align: center; }
     input, select { margin: 6px 0; padding: 8px; width: 80%; max-width: 300px; }
     button { padding: 10px 20px; margin: 10px; }
-    #reader { width: 300px; height: 300px; margin: 20px auto; border: 1px solid #ccc; position: relative; }
+    #reader { 
+      width: 300px; 
+      height: 300px; 
+      margin: 20px auto; 
+      border: 1px solid #ccc; 
+      position: relative; 
+      overflow: hidden; /* 隱藏框外畫面 */
+    }
     #success { color: green; font-weight: bold; margin-top: 16px; }
     #error { color: red; margin-top: 10px; }
     /* 進度指示器樣式 */
@@ -28,13 +35,26 @@
       50% { opacity: 0.5; }
       100% { opacity: 1; }
     }
-    /* 確保白色框框清晰 */
+    /* 確保白色框框清晰並遮罩框外 */
     #reader .scan-region-highlight-svg {
       border: 2px solid white !important;
       box-shadow: 0 0 5px rgba(0,0,0,0.5);
     }
+    #reader video {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+    #reader .html5-qrcode-element {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 250px !important;
+      height: 250px !important;
+    }
   </style>
-  <script src="https://unpkg.com/html5-qrcode@latest/html5-qrcode.min.js"></script>
+  <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
 </head>
 <body>
   <h2>📋 掃描並送出紀錄</h2>
@@ -44,6 +64,12 @@
     <select id="staff" required>
       <option value="">請選擇</option>
     </select><br>
+
+    <!-- 將掃描框移動到員工下拉選單下方 -->
+    <div id="reader"></div>
+    <button onclick="startScanner()">開始掃描</button>
+    <button onclick="stopScanner()" style="display: none;" id="stopButton">停止掃描</button>
+    <button onclick="startScanner()" style="display: none;" id="retryButton">重試</button>
 
     <label>品項：</label><br>
     <input type="text" id="item" placeholder="可掃描或手動輸入"><br>
@@ -62,12 +88,6 @@
 
   <div id="success"></div>
   <div id="error"></div>
-
-  <h3>📷 掃描條碼</h3>
-  <div id="reader"></div>
-  <button onclick="startScanner()">開始掃描</button>
-  <button onclick="stopScanner()" style="display: none;" id="stopButton">停止掃描</button>
-  <button onclick="startScanner()" style="display: none;" id="retryButton">重試</button>
 
   <script>
     let html5QrCode;
@@ -108,22 +128,22 @@
       }
     }
 
-    // Select back camera (explicitly choose main camera for 1x focal length)
+    // Select back camera (explicitly choose the "後置三鏡頭相機")
     async function selectBackCamera() {
       if (!isSecureContext) return;
       try {
         const cameras = await Html5Qrcode.getCameras();
         if (cameras && cameras.length) {
           console.log("Available cameras:", cameras);
-          // Explicitly choose the "後置三鏡頭相機" (assumed to be main camera)
-          const mainCameraId = "453ED6A6FC98C8A488555C82B1EF05ADE1F011678";
-          let backCamera = cameras.find(camera => camera.id === mainCameraId);
-          // Fallback: choose first non-front camera
-          selectedCameraId = backCamera ? backCamera.id : cameras.find(camera => {
-            const label = camera.label ? camera.label.toLowerCase() : "";
-            return !label.includes("front") && !label.includes("selfie");
-          })?.id || cameras[cameras.length - 1].id;
-          console.log("Selected camera ID:", selectedCameraId, "Label:", backCamera ? backCamera.label : cameras[cameras.length - 1].label);
+          // Explicitly set to "後置三鏡頭相機"
+          selectedCameraId = "453ED6A6FC98C8A488555C82B1EF05ADE1F011678";
+          const selectedCamera = cameras.find(camera => camera.id === selectedCameraId);
+          if (!selectedCamera) {
+            errorEl.textContent = "❌ 找不到指定的後置相機";
+            console.error("Specified camera not found:", selectedCameraId);
+            return;
+          }
+          console.log("Selected camera ID:", selectedCameraId, "Label:", selectedCamera.label);
         } else {
           errorEl.textContent = "❌ 找不到攝影機，請檢查設備是否有可用相機";
           console.error("No cameras found");
