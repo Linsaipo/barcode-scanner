@@ -65,7 +65,7 @@
       <option value="">請選擇</option>
     </select><br>
 
-    <!-- 將掃描框移動到員工下拉選單下方 -->
+    <!-- 掃描框位於員工下拉選單下方 -->
     <div id="reader"></div>
     <button onclick="startScanner()">開始掃描</button>
     <button onclick="stopScanner()" style="display: none;" id="stopButton">停止掃描</button>
@@ -128,22 +128,21 @@
       }
     }
 
-    // Select back camera (explicitly choose the "後置三鏡頭相機")
+    // Select back camera dynamically
     async function selectBackCamera() {
       if (!isSecureContext) return;
       try {
         const cameras = await Html5Qrcode.getCameras();
         if (cameras && cameras.length) {
           console.log("Available cameras:", cameras);
-          // Explicitly set to "後置三鏡頭相機"
-          selectedCameraId = "453ED6A6FC98C8A488555C82B1EF05ADE1F011678";
-          const selectedCamera = cameras.find(camera => camera.id === selectedCameraId);
-          if (!selectedCamera) {
-            errorEl.textContent = "❌ 找不到指定的後置相機";
-            console.error("Specified camera not found:", selectedCameraId);
-            return;
-          }
-          console.log("Selected camera ID:", selectedCameraId, "Label:", selectedCamera.label);
+          // Prioritize back camera (exclude front)
+          let backCamera = cameras.find(camera => {
+            const label = camera.label ? camera.label.toLowerCase() : "";
+            return !label.includes("front") && !label.includes("selfie");
+          });
+          // Fallback: choose first non-front camera or last camera
+          selectedCameraId = backCamera ? backCamera.id : cameras[cameras.length - 1].id;
+          console.log("Selected camera ID:", selectedCameraId, "Label:", backCamera ? backCamera.label : cameras[cameras.length - 1].label);
         } else {
           errorEl.textContent = "❌ 找不到攝影機，請檢查設備是否有可用相機";
           console.error("No cameras found");
@@ -182,12 +181,10 @@
 
       try {
         await html5QrCode.start(
-          selectedCameraId,
+          { deviceId: { exact: selectedCameraId } }, // Use deviceId constraint
           { 
             fps: 10, 
-            qrbox: { width: 250, height: 250 }, 
-            aspectRatio: 1.0, 
-            disableZoom: true // Ensure 1x focal length
+            qrbox: { width: 250, height: 250 } // Remove aspectRatio and disableZoom to avoid OverconstrainedError
           },
           decodedText => {
             document.getElementById("item").value = decodedText;
@@ -228,7 +225,7 @@
       const staff = document.getElementById("staff").value.trim();
       const item = document.getElementById("item").value.trim();
       const location = document.getElementById("location").value.trim();
-      const to = document.getElementById("to").value.trim();
+      const to = document.getElementId("to").value.trim();
       const note = document.getElementById("note").value.trim();
 
       if (!staff || !item) {
