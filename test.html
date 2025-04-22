@@ -185,21 +185,21 @@
       html5QrCode = new Html5Qrcode("reader");
 
       try {
-        await html5QrCode.start(
-          { deviceId: { exact: selectedCameraId } }, // 指定後置相機的 deviceId
-          { 
-            fps: 10, 
-            qrbox: { width: 250, height: 250 } // 保持基本配置，避免 aspectRatio 或其他可能干擾的參數
-          },
-          decodedText => {
-            document.getElementById("item").value = decodedText;
-            resultEl.textContent = `✅ 掃描結果：${decodedText}`;
-            stopScanner();
-          },
-          errorMessage => {
-            // 此處略過頻繁的錯誤信息記錄
-          }
-        );
+await html5QrCode.start(
+  { deviceId: { exact: selectedCameraId } }, 
+  { 
+    fps: 10, 
+    qrbox: { width: 250, height: 250 } 
+  },
+  decodedText => {
+    document.getElementById("item").value = decodedText;
+    resultEl.textContent = `✅ 掃描結果：${decodedText}`;
+    stopScanner(); // 新增這行，掃描成功後立即關閉相機
+  },
+  errorMessage => {
+    // 略過頻繁的錯誤信息記錄
+  }
+);
         document.getElementById("reader").classList.remove("loading");
         stopButton.style.display = "inline-block";
       } catch (err) {
