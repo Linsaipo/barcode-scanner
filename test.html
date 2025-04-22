@@ -4,27 +4,104 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>測試相機</title>
+  <style>
+    body { font-family: Arial, sans-serif; text-align: center; padding: 20px; }
+    #reader { width: 300px; height: 300px; margin: 20px auto; border: 1px solid #ccc; }
+    #error { color: red; margin-top: 10px; }
+    #success { color: green; margin-top: 10px; }
+    select, button { padding: 8px; margin: 10px; }
+  </style>
   <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
 </head>
 <body>
-  <select id="cameraSelect"></select>
+  <h2>測試相機</h2>
+  <select id="cameraSelect"></select><br>
+  <button onclick="startScanner()">開始掃描</button>
+  <button onclick="stopScanner()" id="stopButton" style="display: none;">停止掃描</button>
+  <div id="reader"></div>
+  <div id="success"></div>
   <div id="error"></div>
+
   <script>
+    let html5QrCode;
     const cameraSelect = document.getElementById("cameraSelect");
     const errorEl = document.getElementById("error");
-    Html5Qrcode.getCameras()
-      .then(cameras => {
-        if (cameras && cameras.length) {
-          cameraSelect.innerHTML = cameras
-            .map(camera => `<option value="${camera.id}">${camera.label || `攝影機 ${camera.id}`}</option>`)
-            .join("");
-        } else {
-          errorEl.textContent = "找不到攝影機";
-        }
-      })
-      .catch(err => {
-        errorEl.textContent = "錯誤：" + err.message;
-      });
+    const successEl = document.getElementById("success");
+    const stopButton = document.getElementById("stopButton");
+
+    // 填充相機選項
+    function populateCameraSelect() {
+      Html5Qrcode.getCameras()
+        .then(cameras => {
+          if (cameras && cameras.length) {
+            cameraSelect.innerHTML = cameras
+              .map(camera => `<option value="${camera.id}">${camera.label || `攝影機 ${camera.id}`}</option>`)
+              .join("");
+            cameraSelect.value = cameras[0].id; // 預設選擇第一個相機
+          } else {
+            errorEl.textContent = "❌ 找不到攝影機，請檢查設備是否有可用相機";
+            cameraSelect.disabled = true;
+          }
+        })
+        .catch(err => {
+          errorEl.textContent = `❌ 無法取得攝影機：${err.message}`;
+          console.error("Camera access error:", err);
+          cameraSelect.disabled = true;
+        });
+    }
+
+    // 啟動掃描
+    function startScanner() {
+      if (html5QrCode && html5QrCode.getState() === Html5QrcodeScannerState.SCANNING) {
+        errorEl.textContent = "❌ 掃描器已在運行";
+        return;
+      }
+
+      errorEl.textContent = "📡 正在啟動相機...";
+      successEl.textContent = "";
+      html5QrCode = new Html5Qrcode("reader");
+      const cameraId = cameraSelect.value;
+
+      html5QrCode
+        .start(
+          cameraId,
+          { fps: 10, qrbox: { width: 250, height: 250 } },
+          decodedText => {
+            successEl.textContent = `✅ 掃描結果：${decodedText}`;
+            stopScanner();
+          },
+          errorMessage => {
+            // 忽略頻繁的掃描錯誤
+          }
+        )
+        .then(() => {
+          errorEl.textContent = "";
+          stopButton.style.display = "inline-block";
+        })
+        .catch(err => {
+          errorEl.textContent = `❌ 啟動相機失敗：${err.message}`;
+          console.error("Start scanner error:", err);
+        });
+    }
+
+    // 停止掃描
+    function stopScanner() {
+      if (html5QrCode && html5QrCode.getState() === Html5QrcodeScannerState.SCANNING) {
+        html5QrCode
+          .stop()
+          .then(() => {
+            document.getElementById("reader").innerHTML = "";
+            stopButton.style.display = "none";
+            errorEl.textContent = "";
+          })
+          .catch(err => {
+            errorEl.textContent = `❌ 停止掃描失敗：${err.message}`;
+          });
+      }
+    }
+
+    // 頁面載入時初始化
+    window.onload = populateCameraSelect;
   </script>
 </body>
 </html>
