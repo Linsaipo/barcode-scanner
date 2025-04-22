@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>📷 相機測試</title>
+  <script src="https://unpkg.com/html5-qrcode@2.3.10/html5-qrcode.min.js"></script>
+  <style>
+    body { font-family: Arial; text-align: center; padding: 20px; }
+    #reader { width: 300px; margin: 20px auto; border: 1px solid #ccc; }
+    #result { margin-top: 12px; font-size: 1.1em; color: green; }
+    #error { margin-top: 10px; color: red; }
+  </style>
+</head>
+<body>
+  <h1>📷 相機掃描測試</h1>
+  <div id="reader"></div>
+  <button onclick="startScanner()">開始掃描</button>
+  <div id="result">尚未掃描</div>
+  <div id="error"></div>
+
+  <script>
+    const resultEl = document.getElementById("result");
+    const errorEl = document.getElementById("error");
+
+    function startScanner() {
+      errorEl.textContent = "📡 正在啟動相機...";
+      const html5QrCode = new Html5Qrcode("reader");
+
+      Html5Qrcode.getCameras().then(cameras => {
+        if (cameras.length) {
+          html5QrCode.start(
+            cameras[0].id,
+            { fps: 10, qrbox: { width: 250, height: 250 } },
+            (decodedText, decodedResult) => {
+              resultEl.textContent = `✅ 掃描結果：${decodedText}`;
+              html5QrCode.stop();
+            }
+          ).then(() => {
+            errorEl.textContent = ""; // 清除錯誤
+          }).catch(err => {
+            errorEl.textContent = `❌ 啟動掃描器失敗：${err}`;
+          });
+        } else {
+          errorEl.textContent = "❌ 找不到攝影機";
+        }
+      }).catch(err => {
+        errorEl.textContent = `❌ 無法取得攝影機：${err}`;
+      });
+    }
+  </script>
+</body>
+</html>
