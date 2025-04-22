@@ -6,7 +6,7 @@
   <title>📷 條碼掃描器</title>
   <style>
     body { font-family: Arial, sans-serif; padding: 20px; text-align: center; }
-    input { margin: 6px 0; padding: 8px; width: 80%; max-width: 300px; }
+    input, select { margin: 6px 0; padding: 8px; width: 80%; max-width: 300px; }
     button { padding: 10px 20px; margin: 10px; }
     #reader { width: 300px; height: 300px; margin: 20px auto; border: 1px solid #ccc; position: relative; }
     #success { color: green; font-weight: bold; margin-top: 16px; }
@@ -36,7 +36,9 @@
 
   <div>
     <label>員工：</label><br>
-    <input type="text" id="staff" placeholder="請輸入員工姓名" required><br>
+    <select id="staff" required>
+      <option value="">請選擇</option>
+    </select><br>
 
     <label>品項：</label><br>
     <input type="text" id="item" placeholder="可掃描或手動輸入"><br>
@@ -68,6 +70,7 @@
     const errorEl = document.getElementById("error");
     const stopButton = document.getElementById("stopButton");
     const retryButton = document.getElementById("retryButton");
+    const staffSelect = document.getElementById("staff");
     let selectedCameraId;
     let isSecureContext = window.isSecureContext;
 
@@ -75,6 +78,29 @@
     if (!isSecureContext) {
       errorEl.textContent = "❌ 請使用 HTTPS 或 localhost 訪問此頁面以啟用攝影機";
       document.querySelectorAll("button").forEach(btn => btn.disabled = true);
+    }
+
+    // Load staff list from Google Sheets
+    async function loadStaffList() {
+      try {
+        const spreadsheetId = "1j6FUpDvxLSktjQAciiz-IcDeSOUkoi6n8hES196ByC8";
+        const sheetGid = "133637117";
+        const url = `https://docs.google.com/spreadsheets/d/${spreadsheetId}/gviz/tq?gid=${sheetGid}&tqx=out:json`;
+        const response = await fetch(url);
+        const text = await response.text();
+        // Extract JSON from Google Sheets response
+        const json = JSON.parse(text.substring(47, text.length - 2));
+        const rows = json.table.rows;
+        // Assume staff names are in the first column (A), skip header row
+        const staffList = rows.slice(1).map(row => row.c[0]?.v).filter(name => name);
+        // Populate dropdown
+        staffSelect.innerHTML = '<option value="">請選擇</option>' + 
+          staffList.map(name => `<option value="${name}">${name}</option>`).join("");
+      } catch (err) {
+        errorEl.textContent = `❌ 無法載入員工清單：${err.message}`;
+        console.error("Load staff list error:", err);
+        staffSelect.disabled = true;
+      }
     }
 
     // Select back camera automatically
@@ -170,7 +196,7 @@
       const note = document.getElementById("note").value.trim();
 
       if (!staff || !item) {
-        errorEl.textContent = "❌ 請輸入員工與品項";
+        errorEl.textContent = "❌ 請選擇員工並輸入品項";
         return;
       }
 
@@ -185,6 +211,7 @@
             resultEl.textContent = "✅ 資料已成功寫入！";
             errorEl.textContent = "";
             document.getElementById("item").value = "";
+            staffSelect.value = ""; // Reset to "請選擇"
           } else {
             errorEl.textContent = "❌ 寫入失敗：" + data.message;
           }
@@ -194,10 +221,13 @@
         });
     }
 
-    // Initialize and auto-start scanner on page load
+    // Initialize on page load
     window.onload = async () => {
       if (!isSecureContext) return;
-      await selectBackCamera();
+      await Promise.all([
+        loadStaffList(),
+        selectBackCamera()
+      ]);
       if (selectedCameraId) {
         setTimeout(startScanner, 1000); // Delay 1 second for iOS compatibility
       }
