@@ -6,7 +6,7 @@
   <title>📷 條碼掃描器</title>
   <style>
     body { font-family: Arial, sans-serif; padding: 20px; text-align: center; }
-    input, select { margin: 6px 0; padding: 8px; width: 80%; max-width: 300px; }
+    select, label { font-size: 2em; margin: 6px 0; padding: 8px; width: 80%; max-width: 300px; }
     button { padding: 10px 20px; margin: 10px; }
     #reader { 
       width: 200px; 
@@ -54,11 +54,8 @@
       height: 250px !important;
     }
   </style>
-  <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
 </head>
 <body>
-  <h2>📋 掃描並送出紀錄</h2>
-
   <div>
     <label>員工：</label><br>
     <select id="staff" required>
@@ -88,190 +85,5 @@
 
   <div id="success"></div>
   <div id="error"></div>
-
-  <script>
-    let html5QrCode;
-    const resultEl = document.getElementById("success");
-    const errorEl = document.getElementById("error");
-    const stopButton = document.getElementById("stopButton");
-    const retryButton = document.getElementById("retryButton");
-    const staffSelect = document.getElementById("staff");
-    let selectedCameraId;
-    let isSecureContext = window.isSecureContext;
-
-    // Check for secure context (HTTPS or localhost)
-    if (!isSecureContext) {
-      errorEl.textContent = "❌ 請使用 HTTPS 或 localhost 訪問此頁面以啟用攝影機";
-      document.querySelectorAll("button").forEach(btn => btn.disabled = true);
-    }
-
-    // Load staff list from Google Sheets
-    async function loadStaffList() {
-      try {
-        const spreadsheetId = "1j6FUpDvxLSktjQAciiz-IcDeSOUkoi6n8hES196ByC8";
-        const sheetGid = "133637117";
-        const url = `https://docs.google.com/spreadsheets/d/${spreadsheetId}/gviz/tq?gid=${sheetGid}&tqx=out:json`;
-        const response = await fetch(url);
-        const text = await response.text();
-        // Extract JSON from Google Sheets response
-        const json = JSON.parse(text.substring(47, text.length - 2));
-        const rows = json.table.rows;
-        // Assume staff names are in the first column (A), skip header row
-        const staffList = rows.slice(1).map(row => row.c[0]?.v).filter(name => name);
-        // Populate dropdown
-        staffSelect.innerHTML = '<option value="">請選擇</option>' + 
-          staffList.map(name => `<option value="${name}">${name}</option>`).join("");
-      } catch (err) {
-        errorEl.textContent = `❌ 無法載入員工清單：${err.message}`;
-        console.error("Load staff list error:", err);
-        staffSelect.disabled = true;
-      }
-    }
-
-  async function selectBackCamera() {
-  if (!isSecureContext) return;
-  try {
-    const cameras = await Html5Qrcode.getCameras();
-    if (cameras && cameras.length) {
-      console.log("Available cameras:", cameras);
-
-      // 優先選擇標籤中含有 "後置" 的相機
-      const backCamera = cameras.find(camera => {
-        const label = camera.label ? camera.label.toLowerCase() : "";
-        return label.includes("後置");
-      });
-
-      // 如果找不到帶 "後置" 的相機，就選第一個非 "前置" 的相機
-      const fallbackCamera = cameras.find(camera => {
-        const label = camera.label ? camera.label.toLowerCase() : "";
-        return !label.includes("front") && !label.includes("selfie");
-      });
-
-      // 最終選擇後置相機，如果找不到就用 fallback
-      selectedCameraId = backCamera ? backCamera.id : (fallbackCamera ? fallbackCamera.id : cameras[0].id);
-      console.log("Selected camera ID:", selectedCameraId, "Label:", backCamera ? backCamera.label : fallbackCamera ? fallbackCamera.label : cameras[0].label);
-    } else {
-      errorEl.textContent = "❌ 找不到攝影機，請檢查設備是否有可用相機";
-      console.error("No cameras found");
-    }
-  } catch (err) {
-    errorEl.textContent = `❌ 無法取得攝影機：${err.message}`;
-    console.error("Camera access error:", err);
-  }
-}
-
-    async function startScanner() {
-      if (!isSecureContext) {
-        errorEl.textContent = "❌ 請使用 HTTPS 或 localhost 訪問此頁面";
-        return;
-      }
-      if (html5QrCode && html5QrCode.getState() === Html5QrcodeScannerState.SCANNING) {
-        errorEl.textContent = "❌ 掃描器已在運行";
-        return;
-      }
-
-      if (!selectedCameraId) {
-        errorEl.textContent = "❌ 正在載入相機配置...";
-        await selectBackCamera();
-        if (!selectedCameraId) {
-          errorEl.textContent = "❌ 無法選擇相機，請檢查設備";
-          return;
-        }
-      }
-
-      resultEl.textContent = "";
-      errorEl.textContent = "";
-      retryButton.style.display = "none";
-      document.getElementById("reader").classList.add("loading");
-
-      html5QrCode = new Html5Qrcode("reader");
-
-      try {
-        await html5QrCode.start(
-          { deviceId: { exact: selectedCameraId } }, // 指定後置相機的 deviceId
-          { 
-            fps: 10, 
-            qrbox: { width: 250, height: 250 } // 保持基本配置，避免 aspectRatio 或其他可能干擾的參數
-          },
-          decodedText => {
-            document.getElementById("item").value = decodedText;
-            resultEl.textContent = `✅ 掃描結果：${decodedText}`;
-            stopScanner();
-          },
-          errorMessage => {
-            // 此處略過頻繁的錯誤信息記錄
-          }
-        );
-        document.getElementById("reader").classList.remove("loading");
-        stopButton.style.display = "inline-block";
-      } catch (err) {
-        document.getElementById("reader").classList.remove("loading");
-        errorEl.textContent = `❌ 啟動相機失敗：${err.message}`;
-        retryButton.style.display = "inline-block";
-        console.error("Start scanner error:", err);
-      }
-    }
-
-    function stopScanner() {
-      if (html5QrCode && html5QrCode.getState() === Html5QrcodeScannerState.SCANNING) {
-        html5QrCode
-          .stop()
-          .then(() => {
-            document.getElementById("reader").innerHTML = "";
-            stopButton.style.display = "none";
-            errorEl.textContent = "";
-          })
-          .catch(err => {
-            errorEl.textContent = `❌ 停止掃描失敗：${err.message}`;
-            console.error("Stop scanner error:", err);
-          });
-      }
-    }
-
-    function submitForm() {
-      const staff = document.getElementById("staff").value.trim();
-      const item = document.getElementById("item").value.trim();
-      const location = document.getElementById("location").value.trim();
-      const to = document.getElementById("to").value.trim();
-      const note = document.getElementById("note").value.trim();
-
-      if (!staff || !item) {
-        errorEl.textContent = "❌ 請選擇員工並輸入品項";
-        return;
-      }
-
-      fetch("https://script.google.com/macros/s/AKfycbzK72r-Boa43dJJyKtAHooRjj4pA8qFiG3lJ4t_59uDD0M3nPFDQaqP8u1rTFe91I8alQ/exec", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ staff, item, location, to, note })
-      })
-        .then(res => res.json())
-        .then(data => {
-          if (data.result === "success") {
-            resultEl.textContent = "✅ 資料已成功寫入！";
-            errorEl.textContent = "";
-            document.getElementById("item").value = "";
-            staffSelect.value = ""; // Reset to "請選擇"
-          } else {
-            errorEl.textContent = "❌ 寫入失敗：" + data.message;
-          }
-        })
-        .catch(err => {
-          errorEl.textContent = "❌ 傳送錯誤：" + err;
-        });
-    }
-
-    // Initialize on page load
-    window.onload = async () => {
-      if (!isSecureContext) return;
-      await Promise.all([
-        loadStaffList(),
-        selectBackCamera()
-      ]);
-      if (selectedCameraId) {
-        setTimeout(startScanner, 1000); // Delay 1 second for iOS compatibility
-      }
-    };
-  </script>
 </body>
 </html>
