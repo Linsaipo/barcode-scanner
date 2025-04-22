@@ -3,49 +3,114 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>📷 相機測試</title>
-  <script src="https://unpkg.com/html5-qrcode@2.3.10/html5-qrcode.min.js"></script>
+  <title>📷 條碼掃描器</title>
   <style>
-    body { font-family: Arial; text-align: center; padding: 20px; }
-    #reader { width: 300px; margin: 20px auto; border: 1px solid #ccc; }
-    #result { margin-top: 12px; font-size: 1.1em; color: green; }
-    #error { margin-top: 10px; color: red; }
+    body { font-family: Arial, sans-serif; padding: 20px; text-align: center; }
+    input, select { margin: 6px 0; padding: 8px; width: 80%; max-width: 300px; }
+    button { padding: 10px 20px; margin-top: 10px; }
+    #reader { width: 300px; margin: 20px auto; }
+    #success { color: green; font-weight: bold; margin-top: 16px; }
+    #error { color: red; margin-top: 10px; }
   </style>
+  <!-- 正確載入掃描器 library -->
+  <script src="https://unpkg.com/html5-qrcode@2.3.10/html5-qrcode.min.js" defer></script>
 </head>
 <body>
-  <h1>📷 相機掃描測試</h1>
-  <div id="reader"></div>
-  <button onclick="startScanner()">開始掃描</button>
-  <div id="result">尚未掃描</div>
+  <h2>📋 掃描並送出紀錄</h2>
+
+  <div>
+    <label>員工：</label><br>
+    <input type="text" id="staff" placeholder="請輸入員工姓名" required><br>
+
+    <label>品項：</label><br>
+    <input type="text" id="item" placeholder="可掃描或手動輸入"><br>
+
+    <label>目前所在地：</label><br>
+    <input type="text" id="location"><br>
+
+    <label>備註至位置：</label><br>
+    <input type="text" id="to"><br>
+
+    <label>備註：</label><br>
+    <input type="text" id="note"><br>
+
+    <button onclick="submitForm()">📤 送出資料</button>
+  </div>
+
+  <div id="success"></div>
   <div id="error"></div>
 
+  <h3>📷 掃描條碼</h3>
+  <div id="reader"></div>
+  <button onclick="startScanner()">開始掃描</button>
+
   <script>
-    const resultEl = document.getElementById("result");
-    const errorEl = document.getElementById("error");
+    let html5QrCode;
 
     function startScanner() {
+      const resultEl = document.getElementById("success");
+      const errorEl = document.getElementById("error");
+      resultEl.textContent = "";
       errorEl.textContent = "📡 正在啟動相機...";
-      const html5QrCode = new Html5Qrcode("reader");
+
+      html5QrCode = new Html5Qrcode("reader");
 
       Html5Qrcode.getCameras().then(cameras => {
         if (cameras.length) {
           html5QrCode.start(
             cameras[0].id,
-            { fps: 10, qrbox: { width: 250, height: 250 } },
-            (decodedText, decodedResult) => {
+            { fps: 10, qrbox: 250 },
+            decodedText => {
+              document.getElementById("item").value = decodedText;
               resultEl.textContent = `✅ 掃描結果：${decodedText}`;
-              html5QrCode.stop();
+              html5QrCode.stop().then(() => {
+                document.getElementById("reader").innerHTML = "";
+              });
             }
           ).then(() => {
-            errorEl.textContent = ""; // 清除錯誤
+            errorEl.textContent = "";
           }).catch(err => {
-            errorEl.textContent = `❌ 啟動掃描器失敗：${err}`;
+            errorEl.textContent = "❌ 掃描器啟動失敗：" + err;
           });
         } else {
           errorEl.textContent = "❌ 找不到攝影機";
         }
       }).catch(err => {
-        errorEl.textContent = `❌ 無法取得攝影機：${err}`;
+        errorEl.textContent = "❌ 無法取得攝影機：" + err;
+      });
+    }
+
+    function submitForm() {
+      const staff = document.getElementById("staff").value.trim();
+      const item = document.getElementById("item").value.trim();
+      const location = document.getElementById("location").value.trim();
+      const to = document.getElementById("to").value.trim();
+      const note = document.getElementById("note").value.trim();
+      const resultEl = document.getElementById("success");
+      const errorEl = document.getElementById("error");
+
+      if (!staff || !item) {
+        errorEl.textContent = "❌ 請輸入員工與品項";
+        return;
+      }
+
+      fetch("https://script.google.com/macros/s/AKfycbzK72r-Boa43dJJyKtAHooRjj4pA8qFiG3lJ4t_59uDD0M3nPFDQaqP8u1rTFe91I8alQ/exec", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ staff, item, location, to, note })
+      })
+      .then(res => res.json())
+      .then(data => {
+        if (data.result === "success") {
+          resultEl.textContent = "✅ 資料已成功寫入！";
+          errorEl.textContent = "";
+          document.getElementById("item").value = "";
+        } else {
+          errorEl.textContent = "❌ 寫入失敗：" + data.message;
+        }
+      })
+      .catch(err => {
+        errorEl.textContent = "❌ 傳送錯誤：" + err;
       });
     }
   </script>
