@@ -108,22 +108,17 @@
       }
     }
 
-    // Select back camera (prioritize main camera for 1x focal length)
+    // Select back camera (explicitly choose main camera for 1x focal length)
     async function selectBackCamera() {
       if (!isSecureContext) return;
       try {
         const cameras = await Html5Qrcode.getCameras();
         if (cameras && cameras.length) {
           console.log("Available cameras:", cameras);
-          // Prioritize main camera (exclude front, prefer "main" or first back camera)
-          let backCamera = cameras.find(camera => {
-            const label = camera.label ? camera.label.toLowerCase() : "";
-            return (
-              (label.includes("back") || label.includes("rear") || label.includes("main")) &&
-              !label.includes("front") && !label.includes("selfie")
-            );
-          });
-          // Fallback: choose first back camera or last camera
+          // Explicitly choose the "後置三鏡頭相機" (assumed to be main camera)
+          const mainCameraId = "453ED6A6FC98C8A488555C82B1EF05ADE1F011678";
+          let backCamera = cameras.find(camera => camera.id === mainCameraId);
+          // Fallback: choose first non-front camera
           selectedCameraId = backCamera ? backCamera.id : cameras.find(camera => {
             const label = camera.label ? camera.label.toLowerCase() : "";
             return !label.includes("front") && !label.includes("selfie");
