@@ -74,7 +74,7 @@
     // Check for secure context (HTTPS or localhost)
     if (!isSecureContext) {
       errorEl.textContent = "❌ 請使用 HTTPS 或 localhost 訪問此頁面以啟用攝影機";
-      document.querySelectorAll("button").forEach(btn => btn.disabled = true); // Disable buttons
+      document.querySelectorAll("button").forEach(btn => btn.disabled = true);
     }
 
     // Select back camera automatically
@@ -84,12 +84,18 @@
         const cameras = await Html5Qrcode.getCameras();
         if (cameras && cameras.length) {
           console.log("Available cameras:", cameras);
-          const backCamera = cameras.find(camera => 
-            camera.label.toLowerCase().includes("back") || 
-            camera.label.toLowerCase().includes("rear")
-          );
-          selectedCameraId = backCamera ? backCamera.id : cameras[0].id;
-          console.log("Selected camera ID:", selectedCameraId);
+          // Try to find back camera
+          let backCamera = cameras.find(camera => {
+            const label = camera.label ? camera.label.toLowerCase() : "";
+            return (
+              label.includes("back") ||
+              label.includes("rear") ||
+              !label.includes("front") && !label.includes("selfie")
+            );
+          });
+          // Fallback: choose the last camera (often back camera on iPhones)
+          selectedCameraId = backCamera ? backCamera.id : cameras[cameras.length - 1].id;
+          console.log("Selected camera ID:", selectedCameraId, "Label:", backCamera ? backCamera.label : cameras[cameras.length - 1].label);
         } else {
           errorEl.textContent = "❌ 找不到攝影機，請檢查設備是否有可用相機";
           console.error("No cameras found");
