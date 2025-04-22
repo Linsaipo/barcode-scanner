@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>測試相機</title>
+  <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+</head>
+<body>
+  <select id="cameraSelect"></select>
+  <div id="error"></div>
+  <script>
+    const cameraSelect = document.getElementById("cameraSelect");
+    const errorEl = document.getElementById("error");
+    Html5Qrcode.getCameras()
+      .then(cameras => {
+        if (cameras && cameras.length) {
+          cameraSelect.innerHTML = cameras
+            .map(camera => `<option value="${camera.id}">${camera.label || `攝影機 ${camera.id}`}</option>`)
+            .join("");
+        } else {
+          errorEl.textContent = "找不到攝影機";
+        }
+      })
+      .catch(err => {
+        errorEl.textContent = "錯誤：" + err.message;
+      });
+  </script>
+</body>
+</html>
