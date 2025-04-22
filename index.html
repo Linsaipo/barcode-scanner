@@ -4,22 +4,72 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>📷 條碼掃描器</title>
-  <script src="https://unpkg.com/html5-qrcode@2.3.10/html5-qrcode.min.js"></script>
   <style>
-    body { font-family: Arial; padding: 20px; text-align: center; }
+    body { font-family: Arial, sans-serif; padding: 20px; text-align: center; }
     input, select { margin: 6px 0; padding: 8px; width: 80%; max-width: 300px; }
-    button { padding: 10px 16px; }
-    #reader { width: 300px; margin: 16px auto; }
+    button { padding: 10px 20px; margin: 10px; }
+    #reader { 
+      width: 300px; 
+      height: 150px; 
+      margin: 20px auto; 
+      border: 1px solid #ccc; 
+      position: relative; 
+      overflow: hidden; /* 隱藏框外畫面 */
+    }
     #success { color: green; font-weight: bold; margin-top: 16px; }
     #error { color: red; margin-top: 10px; }
+    /* 進度指示器樣式 */
+    #reader.loading::after {
+      content: "載入相機...\n請確保已授予相機權限";
+      white-space: pre;
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      font-size: 16px;
+      color: #333;
+      animation: pulse 1.5s infinite;
+    }
+    @keyframes pulse {
+      0% { opacity: 1; }
+      50% { opacity: 0.5; }
+      100% { opacity: 1; }
+    }
+    /* 確保白色框框清晰並遮罩框外 */
+    #reader .scan-region-highlight-svg {
+      border: 2px solid white !important;
+      box-shadow: 0 0 5px rgba(0,0,0,0.5);
+    }
+    #reader video {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+    #reader .html5-qrcode-element {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 250px !important;
+      height: 250px !important;
+    }
   </style>
+  <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
 </head>
 <body>
   <h2>📋 掃描並送出紀錄</h2>
 
   <div>
     <label>員工：</label><br>
-    <input type="text" id="staff" placeholder="請輸入員工姓名" required><br>
+    <select id="staff" required>
+      <option value="">請選擇</option>
+    </select><br>
+
+    <!-- 掃描框位於員工下拉選單下方 -->
+    <div id="reader"></div>
+    <button onclick="startScanner()">開始掃描</button>
+    <button onclick="stopScanner()" style="display: none;" id="stopButton">停止掃描</button>
+    <button onclick="startScanner()" style="display: none;" id="retryButton">重試</button>
 
     <label>品項：</label><br>
     <input type="text" id="item" placeholder="可掃描或手動輸入"><br>
@@ -39,30 +89,136 @@
   <div id="success"></div>
   <div id="error"></div>
 
-  <h3>📷 掃描條碼</h3>
-  <div id="reader"></div>
-  <button onclick="startScanner()">開始掃描</button>
-
   <script>
-    const reader = new Html5Qrcode("reader");
+    let html5QrCode;
+    const resultEl = document.getElementById("success");
+    const errorEl = document.getElementById("error");
+    const stopButton = document.getElementById("stopButton");
+    const retryButton = document.getElementById("retryButton");
+    const staffSelect = document.getElementById("staff");
+    let selectedCameraId;
+    let isSecureContext = window.isSecureContext;
 
-    function startScanner() {
-      Html5Qrcode.getCameras().then(cameras => {
-        if (cameras.length) {
-          reader.start(
-            cameras[0].id,
-            { fps: 10, qrbox: 250 },
-            decodedText => {
-              document.getElementById("item").value = decodedText;
-              reader.stop();
-            }
-          );
+    // Check for secure context (HTTPS or localhost)
+    if (!isSecureContext) {
+      errorEl.textContent = "❌ 請使用 HTTPS 或 localhost 訪問此頁面以啟用攝影機";
+      document.querySelectorAll("button").forEach(btn => btn.disabled = true);
+    }
+
+    // Load staff list from Google Sheets
+    async function loadStaffList() {
+      try {
+        const spreadsheetId = "1j6FUpDvxLSktjQAciiz-IcDeSOUkoi6n8hES196ByC8";
+        const sheetGid = "133637117";
+        const url = `https://docs.google.com/spreadsheets/d/${spreadsheetId}/gviz/tq?gid=${sheetGid}&tqx=out:json`;
+        const response = await fetch(url);
+        const text = await response.text();
+        // Extract JSON from Google Sheets response
+        const json = JSON.parse(text.substring(47, text.length - 2));
+        const rows = json.table.rows;
+        // Assume staff names are in the first column (A), skip header row
+        const staffList = rows.slice(1).map(row => row.c[0]?.v).filter(name => name);
+        // Populate dropdown
+        staffSelect.innerHTML = '<option value="">請選擇</option>' + 
+          staffList.map(name => `<option value="${name}">${name}</option>`).join("");
+      } catch (err) {
+        errorEl.textContent = `❌ 無法載入員工清單：${err.message}`;
+        console.error("Load staff list error:", err);
+        staffSelect.disabled = true;
+      }
+    }
+
+    // Select back camera dynamically
+    async function selectBackCamera() {
+      if (!isSecureContext) return;
+      try {
+        const cameras = await Html5Qrcode.getCameras();
+        if (cameras && cameras.length) {
+          console.log("Available cameras:", cameras);
+          // Prioritize back camera (exclude front)
+          let backCamera = cameras.find(camera => {
+            const label = camera.label ? camera.label.toLowerCase() : "";
+            return !label.includes("front") && !label.includes("selfie");
+          });
+          // Fallback: choose first non-front camera or last camera
+          selectedCameraId = backCamera ? backCamera.id : cameras[cameras.length - 1].id;
+          console.log("Selected camera ID:", selectedCameraId, "Label:", backCamera ? backCamera.label : cameras[cameras.length - 1].label);
         } else {
-          document.getElementById("error").textContent = "❌ 找不到攝影機";
+          errorEl.textContent = "❌ 找不到攝影機，請檢查設備是否有可用相機";
+          console.error("No cameras found");
         }
-      }).catch(err => {
-        document.getElementById("error").textContent = "❌ 相機啟動失敗：" + err;
-      });
+      } catch (err) {
+        errorEl.textContent = `❌ 無法取得攝影機：${err.message}`;
+        console.error("Camera access error:", err);
+      }
+    }
+
+    async function startScanner() {
+      if (!isSecureContext) {
+        errorEl.textContent = "❌ 請使用 HTTPS 或 localhost 訪問此頁面";
+        return;
+      }
+      if (html5QrCode && html5QrCode.getState() === Html5QrcodeScannerState.SCANNING) {
+        errorEl.textContent = "❌ 掃描器已在運行";
+        return;
+      }
+
+      if (!selectedCameraId) {
+        errorEl.textContent = "❌ 正在載入相機配置...";
+        await selectBackCamera();
+        if (!selectedCameraId) {
+          errorEl.textContent = "❌ 無法選擇相機，請檢查設備";
+          return;
+        }
+      }
+
+      resultEl.textContent = "";
+      errorEl.textContent = "";
+      retryButton.style.display = "none";
+      document.getElementById("reader").classList.add("loading");
+
+      html5QrCode = new Html5Qrcode("reader");
+
+      try {
+        await html5QrCode.start(
+          { deviceId: { exact: selectedCameraId } }, // 指定後置相機的 deviceId
+          { 
+            fps: 10, 
+            qrbox: { width: 250, height: 250 } // 保持基本配置，避免 aspectRatio 或其他可能干擾的參數
+          },
+          decodedText => {
+            document.getElementById("item").value = decodedText;
+            resultEl.textContent = `✅ 掃描結果：${decodedText}`;
+            stopScanner();
+          },
+          errorMessage => {
+            // 此處略過頻繁的錯誤信息記錄
+          }
+        );
+        document.getElementById("reader").classList.remove("loading");
+        stopButton.style.display = "inline-block";
+      } catch (err) {
+        document.getElementById("reader").classList.remove("loading");
+        errorEl.textContent = `❌ 啟動相機失敗：${err.message}`;
+        retryButton.style.display = "inline-block";
+        console.error("Start scanner error:", err);
+      }
+    }
+
+    function stopScanner() {
+      if (html5QrCode && html5QrCode.getState() === Html5QrcodeScannerState.SCANNING) {
+        html5QrCode
+          .stop()
+          .then(() => {
+            document.getElementById("reader").innerHTML = "";
+            stopButton.style.display = "none";
+            errorEl.textContent = "";
+          })
+          .catch(err => {
+            errorEl.textContent = `❌ 停止掃描失敗：${err.message}`;
+            console.error("Stop scanner error:", err);
+          });
+      }
     }
 
     function submitForm() {
@@ -73,26 +229,42 @@
       const note = document.getElementById("note").value.trim();
 
       if (!staff || !item) {
-        document.getElementById("error").textContent = "請輸入員工與品項";
+        errorEl.textContent = "❌ 請選擇員工並輸入品項";
         return;
       }
 
-      fetch('🔗YOUR_SCRIPT_URL_HERE', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+      fetch("https://script.google.com/macros/s/AKfycbzK72r-Boa43dJJyKtAHooRjj4pA8qFiG3lJ4t_59uDD0M3nPFDQaqP8u1rTFe91I8alQ/exec", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ staff, item, location, to, note })
-      }).then(res => res.json()).then(data => {
-        if (data.result === 'success') {
-          document.getElementById("success").textContent = "✅ 資料已成功寫入！";
-          document.getElementById("error").textContent = "";
-          document.getElementById("item").value = "";
-        } else {
-          document.getElementById("error").textContent = "❌ 寫入失敗：" + data.message;
-        }
-      }).catch(err => {
-        document.getElementById("error").textContent = "❌ 發送失敗：" + err;
-      });
+      })
+        .then(res => res.json())
+        .then(data => {
+          if (data.result === "success") {
+            resultEl.textContent = "✅ 資料已成功寫入！";
+            errorEl.textContent = "";
+            document.getElementById("item").value = "";
+            staffSelect.value = ""; // Reset to "請選擇"
+          } else {
+            errorEl.textContent = "❌ 寫入失敗：" + data.message;
+          }
+        })
+        .catch(err => {
+          errorEl.textContent = "❌ 傳送錯誤：" + err;
+        });
     }
+
+    // Initialize on page load
+    window.onload = async () => {
+      if (!isSecureContext) return;
+      await Promise.all([
+        loadStaffList(),
+        selectBackCamera()
+      ]);
+      if (selectedCameraId) {
+        setTimeout(startScanner, 1000); // Delay 1 second for iOS compatibility
+      }
+    };
   </script>
 </body>
 </html>
