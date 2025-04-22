@@ -3,88 +3,140 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>測試相機</title>
+  <title>📷 條碼掃描器</title>
   <style>
-    body { font-family: Arial, sans-serif; text-align: center; padding: 20px; }
-    #reader { width: 300px; height: 300px; margin: 20px auto; border: 1px solid #ccc; }
+    body { font-family: Arial, sans-serif; padding: 20px; text-align: center; }
+    input, select { margin: 6px 0; padding: 8px; width: 80%; max-width: 300px; }
+    button { padding: 10px 20px; margin: 10px; }
+    #reader { width: 300px; height: 300px; margin: 20px auto; border: 1px solid #ccc; position: relative; }
+    #success { color: green; font-weight: bold; margin-top: 16px; }
     #error { color: red; margin-top: 10px; }
-    #success { color: green; margin-top: 10px; }
-    select, button { padding: 8px; margin: 10px; }
+    /* 進度指示器樣式 */
+    #reader.loading::after {
+      content: "載入相機...";
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      font-size: 16px;
+      color: #333;
+      animation: pulse 1.5s infinite;
+    }
+    @keyframes pulse {
+      0% { opacity: 1; }
+      50% { opacity: 0.5; }
+      100% { opacity: 1; }
+    }
   </style>
   <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
 </head>
 <body>
-  <h2>測試相機</h2>
-  <select id="cameraSelect"></select><br>
-  <button onclick="startScanner()">開始掃描</button>
-  <button onclick="stopScanner()" id="stopButton" style="display: none;">停止掃描</button>
-  <div id="reader"></div>
+  <h2>📋 掃描並送出紀錄</h2>
+
+  <div>
+    <label>員工：</label><br>
+    <input type="text" id="staff" placeholder="請輸入員工姓名" required><br>
+
+    <label>品項：</label><br>
+    <input type="text" id="item" placeholder="可掃描或手動輸入"><br>
+
+    <label>目前所在地：</label><br>
+    <input type="text" id="location"><br>
+
+    <label>備註至位置：</label><br>
+    <input type="text" id="to"><br>
+
+    <label>備註：</label><br>
+    <input type="text" id="note"><br>
+
+    <button onclick="submitForm()">📤 送出資料</button>
+  </div>
+
   <div id="success"></div>
   <div id="error"></div>
 
+  <h3>📷 掃描條碼</h3>
+  <div id="reader"></div>
+  <button onclick="startScanner()">開始掃描</button>
+  <button onclick="stopScanner()" style="display: none;" id="stopButton">停止掃描</button>
+
   <script>
     let html5QrCode;
-    const cameraSelect = document.getElementById("cameraSelect");
+    const resultEl = document.getElementById("success");
     const errorEl = document.getElementById("error");
-    const successEl = document.getElementById("success");
     const stopButton = document.getElementById("stopButton");
+    let selectedCameraId;
 
-    // 填充相機選項
-    function populateCameraSelect() {
+    // Check for secure context (HTTPS or localhost)
+    if (!window.isSecureContext) {
+      errorEl.textContent = "❌ 請使用 HTTPS 或 localhost 訪問此頁面以啟用攝影機";
+      return;
+    }
+
+    // Select back camera automatically
+    function selectBackCamera() {
       Html5Qrcode.getCameras()
         .then(cameras => {
           if (cameras && cameras.length) {
-            cameraSelect.innerHTML = cameras
-              .map(camera => `<option value="${camera.id}">${camera.label || `攝影機 ${camera.id}`}</option>`)
-              .join("");
-            cameraSelect.value = cameras[0].id; // 預設選擇第一個相機
+            // Find back camera (label contains "back" or "rear")
+            const backCamera = cameras.find(camera => 
+              camera.label.toLowerCase().includes("back") || 
+              camera.label.toLowerCase().includes("rear")
+            );
+            selectedCameraId = backCamera ? backCamera.id : cameras[0].id;
           } else {
             errorEl.textContent = "❌ 找不到攝影機，請檢查設備是否有可用相機";
-            cameraSelect.disabled = true;
           }
         })
         .catch(err => {
           errorEl.textContent = `❌ 無法取得攝影機：${err.message}`;
           console.error("Camera access error:", err);
-          cameraSelect.disabled = true;
         });
     }
 
-    // 啟動掃描
     function startScanner() {
       if (html5QrCode && html5QrCode.getState() === Html5QrcodeScannerState.SCANNING) {
         errorEl.textContent = "❌ 掃描器已在運行";
         return;
       }
 
-      errorEl.textContent = "📡 正在啟動相機...";
-      successEl.textContent = "";
+      if (!selectedCameraId) {
+        errorEl.textContent = "❌ 請稍候，正在載入相機...";
+        selectBackCamera();
+        setTimeout(startScanner, 500); // Retry after camera selection
+        return;
+      }
+
+      resultEl.textContent = "";
+      errorEl.textContent = "";
+      document.getElementById("reader").classList.add("loading");
+
       html5QrCode = new Html5Qrcode("reader");
-      const cameraId = cameraSelect.value;
 
       html5QrCode
         .start(
-          cameraId,
+          selectedCameraId,
           { fps: 10, qrbox: { width: 250, height: 250 } },
           decodedText => {
-            successEl.textContent = `✅ 掃描結果：${decodedText}`;
+            document.getElementById("item").value = decodedText;
+            resultEl.textContent = `✅ 掃描結果：${decodedText}`;
             stopScanner();
           },
           errorMessage => {
-            // 忽略頻繁的掃描錯誤
+            // Suppress frequent error logs during scanning
           }
         )
         .then(() => {
-          errorEl.textContent = "";
+          document.getElementById("reader").classList.remove("loading");
           stopButton.style.display = "inline-block";
         })
         .catch(err => {
+          document.getElementById("reader").classList.remove("loading");
           errorEl.textContent = `❌ 啟動相機失敗：${err.message}`;
           console.error("Start scanner error:", err);
         });
     }
 
-    // 停止掃描
     function stopScanner() {
       if (html5QrCode && html5QrCode.getState() === Html5QrcodeScannerState.SCANNING) {
         html5QrCode
@@ -100,8 +152,40 @@
       }
     }
 
-    // 頁面載入時初始化
-    window.onload = populateCameraSelect;
+    function submitForm() {
+      const staff = document.getElementById("staff").value.trim();
+      const item = document.getElementById("item").value.trim();
+      const location = document.getElementById("location").value.trim();
+      const to = document.getElementById("to").value.trim();
+      const note = document.getElementById("note").value.trim();
+
+      if (!staff || !item) {
+        errorEl.textContent = "❌ 請輸入員工與品項";
+        return;
+      }
+
+      fetch("https://script.google.com/macros/s/AKfycbzK72r-Boa43dJJyKtAHooRjj4pA8qFiG3lJ4t_59uDD0M3nPFDQaqP8u1rTFe91I8alQ/exec", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ staff, item, location, to, note })
+      })
+        .then(res => res.json())
+        .then(data => {
+          if (data.result === "success") {
+            resultEl.textContent = "✅ 資料已成功寫入！";
+            errorEl.textContent = "";
+            document.getElementById("item").value = "";
+          } else {
+            errorEl.textContent = "❌ 寫入失敗：" + data.message;
+          }
+        })
+        .catch(err => {
+          errorEl.textContent = "❌ 傳送錯誤：" + err;
+        });
+    }
+
+    // Initialize camera selection on page load
+    window.onload = selectBackCamera;
   </script>
 </body>
 </html>
