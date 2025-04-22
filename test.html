@@ -28,6 +28,11 @@
       50% { opacity: 0.5; }
       100% { opacity: 1; }
     }
+    /* 確保白色框框清晰 */
+    #reader .scan-region-highlight-svg {
+      border: 2px solid white !important;
+      box-shadow: 0 0 5px rgba(0,0,0,0.5);
+    }
   </style>
   <script src="https://unpkg.com/html5-qrcode@latest/html5-qrcode.min.js"></script>
 </head>
@@ -103,16 +108,27 @@
       }
     }
 
-    // Select back camera automatically
+    // Select back camera (prioritize main camera for 1x focal length)
     async function selectBackCamera() {
       if (!isSecureContext) return;
       try {
         const cameras = await Html5Qrcode.getCameras();
         if (cameras && cameras.length) {
           console.log("Available cameras:", cameras);
-          // Force selection of the last camera (typically back camera on iPhones)
-          selectedCameraId = cameras[cameras.length - 1].id;
-          console.log("Selected camera ID:", selectedCameraId, "Label:", cameras[cameras.length - 1].label);
+          // Prioritize main camera (exclude front, prefer "main" or first back camera)
+          let backCamera = cameras.find(camera => {
+            const label = camera.label ? camera.label.toLowerCase() : "";
+            return (
+              (label.includes("back") || label.includes("rear") || label.includes("main")) &&
+              !label.includes("front") && !label.includes("selfie")
+            );
+          });
+          // Fallback: choose first back camera or last camera
+          selectedCameraId = backCamera ? backCamera.id : cameras.find(camera => {
+            const label = camera.label ? camera.label.toLowerCase() : "";
+            return !label.includes("front") && !label.includes("selfie");
+          })?.id || cameras[cameras.length - 1].id;
+          console.log("Selected camera ID:", selectedCameraId, "Label:", backCamera ? backCamera.label : cameras[cameras.length - 1].label);
         } else {
           errorEl.textContent = "❌ 找不到攝影機，請檢查設備是否有可用相機";
           console.error("No cameras found");
@@ -152,7 +168,12 @@
       try {
         await html5QrCode.start(
           selectedCameraId,
-          { fps: 10, qrbox: { width: 250, height: 250 }, aspectRatio: 1.0 },
+          { 
+            fps: 10, 
+            qrbox: { width: 250, height: 250 }, 
+            aspectRatio: 1.0, 
+            disableZoom: true // Ensure 1x focal length
+          },
           decodedText => {
             document.getElementById("item").value = decodedText;
             resultEl.textContent = `✅ 掃描結果：${decodedText}`;
