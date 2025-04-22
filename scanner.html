@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>📷 條碼掃描測試</title>
+  <script src="https://unpkg.com/html5-qrcode@2.3.10/html5-qrcode.min.js"></script>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      text-align: center;
+      padding: 20px;
+    }
+    #reader {
+      width: 300px;
+      margin: 20px auto;
+    }
+    #result {
+      margin-top: 16px;
+      font-size: 1.2em;
+      color: green;
+    }
+    #error {
+      margin-top: 8px;
+      font-size: 0.95em;
+      color: red;
+    }
+    button {
+      padding: 10px 20px;
+    }
+  </style>
+</head>
+<body>
+  <h1>📷 條碼掃描測試</h1>
+  <button onclick="startScanner()">開始掃描</button>
+  <div id="reader"></div>
+  <div id="result">尚未掃描</div>
+  <div id="error"></div>
+
+  <script>
+    function startScanner() {
+      const readerDiv = document.getElementById("reader");
+      const resultEl = document.getElementById("result");
+      const errorEl = document.getElementById("error");
+
+      readerDiv.innerHTML = "📷 正在啟動相機...";
+      resultEl.textContent = "尚未掃描";
+      errorEl.textContent = "";
+
+      const html5QrCode = new Html5Qrcode("reader");
+
+      Html5Qrcode.getCameras().then(cameras => {
+        if (!cameras || cameras.length === 0) {
+          errorEl.textContent = "❌ 沒有找到攝影機，請確認權限或裝置支援";
+          return;
+        }
+
+        html5QrCode.start(
+          cameras[0].id,
+          { fps: 10, qrbox: 250 },
+          (decodedText) => {
+            resultEl.textContent = `✅ 掃描結果：${decodedText}`;
+            html5QrCode.stop().then(() => {
+              readerDiv.innerHTML = "";
+            }).catch(err => {
+              errorEl.textContent = `❌ 無法停止掃描器：${err}`;
+            });
+          }
+        ).then(() => {
+          errorEl.textContent = "";
+        }).catch(err => {
+          errorEl.textContent = `❌ 掃描器啟動失敗：${err}`;
+        });
+      }).catch(err => {
+        errorEl.textContent = `❌ 取得攝影機錯誤：${err}`;
+      });
+    }
+  </script>
+</body>
+</html>
