@@ -153,24 +153,37 @@
       }
     }
 
-    async function startScanner() {
-      if (!isSecureContext) {
-        errorEl.textContent = "❌ 請使用 HTTPS 或 localhost 訪問此頁面";
-        return;
-      }
-      if (html5QrCode && html5QrCode.getState() === Html5QrcodeScannerState.SCANNING) {
-        errorEl.textContent = "❌ 掃描器已在運行";
-        return;
-      }
+async function selectBackCamera() {
+  if (!isSecureContext) return;
+  try {
+    const cameras = await Html5Qrcode.getCameras();
+    if (cameras && cameras.length) {
+      console.log("Available cameras:", cameras);
+      
+      // 選擇標籤中含有 "後置" 的相機
+      const backCamera = cameras.find(camera => {
+        const label = camera.label ? camera.label.toLowerCase() : "";
+        return label.includes("後置");
+      });
 
-      if (!selectedCameraId) {
-        errorEl.textContent = "❌ 正在載入相機配置...";
-        await selectBackCamera();
-        if (!selectedCameraId) {
-          errorEl.textContent = "❌ 無法選擇相機，請檢查設備";
-          return;
-        }
-      }
+      // 如果找不到帶 "後置" 的相機，就選第一個非 "前置" 的相機
+      const fallbackCamera = cameras.find(camera => {
+        const label = camera.label ? camera.label.toLowerCase() : "";
+        return !label.includes("front") && !label.includes("selfie");
+      });
+
+      // 最終選擇後置相機，如果找不到就用 fallback
+      selectedCameraId = backCamera ? backCamera.id : (fallbackCamera ? fallbackCamera.id : cameras[0].id);
+      console.log("Selected camera ID:", selectedCameraId, "Label:", backCamera ? backCamera.label : fallbackCamera ? fallbackCamera.label : cameras[0].label);
+    } else {
+      errorEl.textContent = "❌ 找不到攝影機，請檢查設備是否有可用相機";
+      console.error("No cameras found");
+    }
+  } catch (err) {
+    errorEl.textContent = `❌ 無法取得攝影機：${err.message}`;
+    console.error("Camera access error:", err);
+  }
+}
 
       resultEl.textContent = "";
       errorEl.textContent = "";
@@ -181,10 +194,10 @@
 
       try {
         await html5QrCode.start(
-          { deviceId: { exact: selectedCameraId } }, // Use deviceId constraint
+          { deviceId: { exact: selectedCameraId } }, // 指定後置相機的 deviceId
           { 
             fps: 10, 
-            qrbox: { width: 250, height: 250 } // Remove aspectRatio and disableZoom to avoid OverconstrainedError
+            qrbox: { width: 250, height: 250 } // 保持基本配置，避免 aspectRatio 或其他可能干擾的參數
           },
           decodedText => {
             document.getElementById("item").value = decodedText;
@@ -192,7 +205,7 @@
             stopScanner();
           },
           errorMessage => {
-            // Suppress frequent error logs during scanning
+            // 此處略過頻繁的錯誤信息記錄
           }
         );
         document.getElementById("reader").classList.remove("loading");
@@ -225,7 +238,7 @@
       const staff = document.getElementById("staff").value.trim();
       const item = document.getElementById("item").value.trim();
       const location = document.getElementById("location").value.trim();
-      const to = document.getElementId("to").value.trim();
+      const to = document.getElementById("to").value.trim();
       const note = document.getElementById("note").value.trim();
 
       if (!staff || !item) {
