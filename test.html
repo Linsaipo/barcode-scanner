@@ -210,21 +210,21 @@ await html5QrCode.start(
       }
     }
 
-    function stopScanner() {
-      if (html5QrCode && html5QrCode.getState() === Html5QrCodeScannerState.SCANNING) {
-        html5QrCode
-          .stop()
-          .then(() => {
-            document.getElementById("reader").innerHTML = "";
-            stopButton.style.display = "none";
-            errorEl.textContent = "";
-          })
-          .catch(err => {
-            errorEl.textContent = `❌ 停止掃描失敗：${err.message}`;
-            console.error("Stop scanner error:", err);
-          });
-      }
-    }
+function stopScanner() {
+  if (html5QrCode && html5QrCode.getState() === Html5QrcodeScannerState.SCANNING) {
+    html5QrCode
+      .stop()
+      .then(() => {
+        document.getElementById("reader").innerHTML = "";
+        stopButton.style.display = "none";
+        errorEl.textContent = "";
+      })
+      .catch(err => {
+        errorEl.textContent = `❌ 停止掃描失敗：${err.message}`;
+        console.error("Stop scanner error:", err);
+      });
+  }
+}
 
     function submitForm() {
       const staff = document.getElementById("staff").value.trim();
