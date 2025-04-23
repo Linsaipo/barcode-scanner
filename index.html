@@ -104,27 +104,27 @@
     }
 
     // Load staff list from Google Sheets
-    async function loadStaffList() {
-      try {
-        const spreadsheetId = "1j6FUpDvxLSktjQAciiz-IcDeSOUkoi6n8hES196ByC8";
-        const sheetGid = "133637117";
-        const url = `https://docs.google.com/spreadsheets/d/${spreadsheetId}/gviz/tq?gid=${sheetGid}&tqx=out:json`;
-        const response = await fetch(url);
-        const text = await response.text();
-        // Extract JSON from Google Sheets response
-        const json = JSON.parse(text.substring(47, text.length - 2));
-        const rows = json.table.rows;
-        // Assume staff names are in the first column (A), skip header row
-        const staffList = rows.slice(1).map(row => row.c[0]?.v).filter(name => name);
-        // Populate dropdown
-        staffSelect.innerHTML = '<option value="">請選擇</option>' + 
-          staffList.map(name => `<option value="${name}">${name}</option>`).join("");
-      } catch (err) {
-        errorEl.textContent = `❌ 無法載入員工清單：${err.message}`;
-        console.error("Load staff list error:", err);
-        staffSelect.disabled = true;
-      }
-    }
+async function loadStaffList() {
+  try {
+    const spreadsheetId = "1j6FUpDvxLSktjQAciiz-IcDeSOUkoi6n8hES196ByC8";
+    const sheetGid = "133637117";
+    const url = `https://docs.google.com/spreadsheets/d/${spreadsheetId}/gviz/tq?gid=${sheetGid}&tqx=out:json`;
+    const response = await fetch(url);
+    const text = await response.text();
+    console.log("Staff list raw response:", text);
+    const json = JSON.parse(text.substring(47, text.length - 2));
+    console.log("Parsed staff list JSON:", json);
+    const rows = json.table.rows;
+    const staffList = rows.slice(1).map(row => row.c[0]?.v).filter(name => name);
+    console.log("Extracted staff list:", staffList);
+    staffSelect.innerHTML = '<option value="">請選擇</option>' + 
+      staffList.map(name => `<option value="${name}">${name}</option>`).join("");
+  } catch (err) {
+    errorEl.textContent = `❌ 無法載入員工清單：${err.message}`;
+    console.error("Load staff list error:", err);
+    staffSelect.disabled = true;
+  }
+}
 
     async function selectBackCamera() {
       if (!isSecureContext) return;
@@ -226,12 +226,40 @@ function stopScanner() {
   }
 }
 
-    async function searchAsset() {
+async function searchAsset() {
   const assetNumber = document.getElementById("assetNumber").value.trim();
   if (!assetNumber) {
     errorEl.textContent = "❌ 请输入或扫描财产编号";
     return;
   }
+
+  try {
+    const spreadsheetId = "1j6FUpDvxLSktjQAciiz-IcDeSOUkoi6n8hES196ByC8";
+    const sheetGid = "103295896";
+    const url = `https://docs.google.com/spreadsheets/d/${spreadsheetId}/gviz/tq?gid=${sheetGid}&tqx=out:json`;
+    const response = await fetch(url);
+    const text = await response.text();
+    console.log("Asset search raw response:", text);
+    const json = JSON.parse(text.substring(47, text.length - 2));
+    console.log("Parsed asset data JSON:", json);
+    const rows = json.table.rows;
+
+    const result = rows.find(row => row.c && row.c[2] && row.c[2].v === assetNumber);
+    if (result && result.c) {
+      console.log("Matched asset row:", result);
+      document.getElementById("name").textContent = result.c[3]?.v || "無名稱";
+      document.getElementById("spec").textContent = result.c[4]?.v || "無規格";
+      document.getElementById("quantity").textContent = result.c[5]?.v || "無數量";
+      resultEl.textContent = `✅ 找到財產編號：${assetNumber}`;
+    } else {
+      console.log("No matching asset found for:", assetNumber);
+      resultEl.textContent = `❌ 未找到財產編號：${assetNumber}`;
+    }
+  } catch (err) {
+    errorEl.textContent = `❌ 查詢失敗：${err.message}`;
+    console.error("查詢財產編號失敗：", err);
+  }
+}
 
   try {
     const spreadsheetId = "1j6FUpDvxLSktjQAciiz-IcDeSOUkoi6n8hES196ByC8";
