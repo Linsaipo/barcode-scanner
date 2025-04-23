@@ -193,8 +193,8 @@ await html5QrCode.start(
   },
   decodedText => {
     document.getElementById("item").value = decodedText;
-    resultEl.textContent = `✅ 掃描結果：${decodedText}`;
-    stopScanner(); // 新增這行，掃描成功後立即關閉相機
+    resultEl.textContent = `✅ 掃描成功！`;
+    stopScanner(); // 掃描成功後立即關閉相機
   },
   errorMessage => {
     // 略過頻繁的錯誤信息記錄
