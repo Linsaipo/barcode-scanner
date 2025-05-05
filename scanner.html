@@ -8,12 +8,12 @@
     body { font-family: Arial, sans-serif; padding: 20px; text-align: center; }
     input, select { margin: 6px 0; padding: 8px; width: 80%; max-width: 300px; }
     button { padding: 10px 20px; margin: 10px; }
-    #reader {
-      width: 300px;
-      height: 300px;
-      margin: 20px auto;
-      border: 1px solid #ccc;
-      position: relative;
+    #reader { 
+      width: 300px; 
+      height: 300px; 
+      margin: 20px auto; 
+      border: 1px solid #ccc; 
+      position: relative; 
       overflow: hidden; /* 隱藏框外畫面 */
     }
     #success { color: green; font-weight: bold; margin-top: 16px; }
@@ -63,13 +63,14 @@
       <option value="">請選擇</option>
     </select><br>
 
+    <!-- 掃描框位於員工下拉選單下方 -->
     <div id="reader"></div>
     <button onclick="startScanner()">開始掃描</button>
     <button onclick="stopScanner()" style="display: none;" id="stopButton">停止掃描</button>
     <button onclick="startScanner()" style="display: none;" id="retryButton">重試</button>
 
     <label>品項：</label><br>
-    <input type="text" id="item" placeholder="可掃描或手動輸入" onchange="searchItem(this.value)"><br>
+    <input type="text" id="item" placeholder="可掃描或手動輸入"><br>
 
     <label>目前所在地：</label><br>
     <input type="text" id="location"><br>
@@ -93,59 +94,13 @@
     const stopButton = document.getElementById("stopButton");
     const retryButton = document.getElementById("retryButton");
     const staffSelect = document.getElementById("staff");
-    const itemInput = document.getElementById("item");
-    const locationInput = document.getElementById("location");
     let selectedCameraId;
     let isSecureContext = window.isSecureContext;
-    let inventoryData = {}; // 用於儲存庫存資料
 
     // Check for secure context (HTTPS or localhost)
     if (!isSecureContext) {
       errorEl.textContent = "❌ 請使用 HTTPS 或 localhost 訪問此頁面以啟用攝影機";
       document.querySelectorAll("button").forEach(btn => btn.disabled = true);
-    }
-
-    // Load inventory data from Google Sheets
-    async function loadInventoryData() {
-      try {
-        const spreadsheetId = "1j6FUpDvxLSktjQAciiz-IcDeSOUkoi6n8hES196ByC8";
-        const sheetName = "總表";
-        const url = `https://docs.google.com/spreadsheets/d/${spreadsheetId}/gviz/tq?tqx=out:json&sheet=${encodeURIComponent(sheetName)}`;
-        const response = await fetch(url);
-        const text = await response.text();
-        const json = JSON.parse(text.substring(47, text.length - 2));
-        const rows = json.table.rows;
-        const cols = json.table.cols;
-
-        // 找出 "財產編號" 和 "目前所在地" 的欄位索引
-        let itemCodeIndex = -1;
-        let locationIndex = -1;
-        cols.forEach((col, index) => {
-          if (col.label === "財產編號") {
-            itemCodeIndex = index;
-          } else if (col.label === "目前所在地") {
-            locationIndex = index;
-          }
-        });
-
-        if (itemCodeIndex !== -1 && locationIndex !== -1) {
-          rows.slice(1).forEach(row => {
-            const itemCode = row.c[itemCodeIndex]?.v?.toString().trim();
-            const location = row.c[locationIndex]?.v?.toString().trim();
-            if (itemCode) {
-              inventoryData[itemCode] = location || "";
-            }
-          });
-          console.log("Inventory data loaded:", inventoryData);
-        } else {
-          errorEl.textContent = "❌ 無法找到 '財產編號' 或 '目前所在地' 欄位";
-          console.error("找不到 '財產編號' 或 '目前所在地' 欄位");
-        }
-
-      } catch (err) {
-        errorEl.textContent = `❌ 無法載入庫存資料：${err.message}`;
-        console.error("Load inventory data error:", err);
-      }
     }
 
     // Load staff list from Google Sheets
@@ -162,22 +117,12 @@
         // Assume staff names are in the first column (A), skip header row
         const staffList = rows.slice(1).map(row => row.c[0]?.v).filter(name => name);
         // Populate dropdown
-        staffSelect.innerHTML = '<option value="">請選擇</option>' +
+        staffSelect.innerHTML = '<option value="">請選擇</option>' + 
           staffList.map(name => `<option value="${name}">${name}</option>`).join("");
       } catch (err) {
         errorEl.textContent = `❌ 無法載入員工清單：${err.message}`;
         console.error("Load staff list error:", err);
         staffSelect.disabled = true;
-      }
-    }
-
-    function searchItem(itemCode) {
-      const trimmedItemCode = itemCode.trim();
-      if (inventoryData.hasOwnProperty(trimmedItemCode)) {
-        locationInput.value = inventoryData[trimmedItemCode];
-      } else if (trimmedItemCode) {
-        locationInput.value = ""; // 清空，表示找不到
-        console.log(`財產編號 '${trimmedItemCode}' 未在庫存中找到。`);
       }
     }
 
@@ -240,22 +185,21 @@
       html5QrCode = new Html5Qrcode("reader");
 
       try {
-        await html5QrCode.start(
-          { deviceId: { exact: selectedCameraId } },
-          {
-            fps: 10,
-            qrbox: { width: 250, height: 250 }
-          },
-          decodedText => {
-            itemInput.value = decodedText;
-            resultEl.textContent = `✅ 掃描成功！`;
-            searchItem(decodedText); // 掃描成功後立即搜尋
-            stopScanner(); // 掃描成功後立即關閉相機
-          },
-          errorMessage => {
-            // 略過頻繁的錯誤信息記錄
-          }
-        );
+await html5QrCode.start(
+  { deviceId: { exact: selectedCameraId } }, 
+  { 
+    fps: 10, 
+    qrbox: { width: 250, height: 250 } 
+  },
+  decodedText => {
+    document.getElementById("item").value = decodedText;
+    resultEl.textContent = `✅ 掃描成功！`;
+    stopScanner(); // 掃描成功後立即關閉相機
+  },
+  errorMessage => {
+    // 略過頻繁的錯誤信息記錄
+  }
+);
         document.getElementById("reader").classList.remove("loading");
         stopButton.style.display = "inline-block";
       } catch (err) {
@@ -266,21 +210,21 @@
       }
     }
 
-    function stopScanner() {
-      if (html5QrCode && html5QrCode.getState() === Html5QrcodeScannerState.SCANNING) {
-        html5QrCode
-          .stop()
-          .then(() => {
-            document.getElementById("reader").innerHTML = "";
-            stopButton.style.display = "none";
-            errorEl.textContent = "";
-          })
-          .catch(err => {
-            errorEl.textContent = `❌ 停止掃描失敗：${err.message}`;
-            console.error("Stop scanner error:", err);
-          });
-      }
-    }
+function stopScanner() {
+  if (html5QrCode && html5QrCode.getState() === Html5QrcodeScannerState.SCANNING) {
+    html5QrCode
+      .stop()
+      .then(() => {
+        document.getElementById("reader").innerHTML = "";
+        stopButton.style.display = "none";
+        errorEl.textContent = "";
+      })
+      .catch(err => {
+        errorEl.textContent = `❌ 停止掃描失敗：${err.message}`;
+        console.error("Stop scanner error:", err);
+      });
+  }
+}
 
     function submitForm() {
       const staff = document.getElementById("staff").value.trim();
@@ -305,7 +249,6 @@
             resultEl.textContent = "✅ 資料已成功寫入！";
             errorEl.textContent = "";
             document.getElementById("item").value = "";
-            document.getElementById("location").value = ""; // 清空所在地欄位
             staffSelect.value = ""; // Reset to "請選擇"
           } else {
             errorEl.textContent = "❌ 寫入失敗：" + data.message;
@@ -321,7 +264,6 @@
       if (!isSecureContext) return;
       await Promise.all([
         loadStaffList(),
-        loadInventoryData(), // 載入庫存資料
         selectBackCamera()
       ]);
       if (selectedCameraId) {
