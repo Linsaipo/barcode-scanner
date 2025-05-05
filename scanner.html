@@ -191,15 +191,12 @@ await html5QrCode.start(
     fps: 10, 
     qrbox: { width: 250, height: 250 } 
   },
-  decodedText => {
-    document.getElementById("item").value = decodedText;
-    resultEl.textContent = `✅ 掃描成功！`;
-    stopScanner(); // 掃描成功後立即關閉相機
-  },
-  errorMessage => {
-    // 略過頻繁的錯誤信息記錄
-  }
-);
+decodedText => {
+  console.log("掃描到的內容:", decodedText);
+  document.getElementById("item").value = decodedText;
+  resultEl.textContent = `✅ 掃描成功！`;
+  stopScanner(); // 先註解掉這行
+},
         document.getElementById("reader").classList.remove("loading");
         stopButton.style.display = "inline-block";
       } catch (err) {
