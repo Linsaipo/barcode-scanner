@@ -10,21 +10,32 @@
             max-width: 600px;
             margin: 20px auto;
         }
+
         .loading {
             background-color: #f0f0f0;
             animation: pulse 2s infinite;
         }
+
         @keyframes pulse {
-            0% { opacity: 0.5; }
-            50% { opacity: 1; }
-            100% { opacity: 0.5; }
+            0% {
+                opacity: 0.5;
+            }
+
+            50% {
+                opacity: 1;
+            }
+
+            100% {
+                opacity: 0.5;
+            }
         }
     </style>
+    <script src="https://unpkg.com/html5-qrcode@2.3.4/html5-qrcode.min.js"></script>
 </head>
 <body>
     <div id="reader"></div>
     <div id="success" style="color:green; font-weight: bold;"></div>
-    <div id="error" style="color:red; font-weight: bold;"></div>  <label for="staff">員工：</label>
+    <div id="error" style="color:red; font-weight: bold;"></div> <label for="staff">員工：</label>
     <select id="staff"></select><br><br>
     <label for="item">品項：</label>
     <input type="text" id="item" readonly><br><br>
@@ -64,7 +75,7 @@
             console.log("loadStaffList() 被呼叫");
             try {
                 // 替換為你的 Google Apps Script Web 應用程式 URL
-                const scriptUrl = "https://script.google.com/macros/s/AKfycbyzJ8aZwDPJ_Ii-p8Rv1HykheqocnnbsqNP6Ebtz2TJvlI8vv_IYF1qBLWRqgY8vs-s/exec?action=getStaffList"; // 已修正的 URL
+                const scriptUrl = "https://script.google.com/macros/s/YOUR_SCRIPT_ID/exec?action=getStaffList"; // 已修正的 URL
                 const response = await fetch(scriptUrl);
                 const staffList = await response.json();
 
@@ -144,8 +155,7 @@
             document.getElementById("reader").classList.add("loading");
 
             if (typeof Html5Qrcode === 'undefined') {
-                errorEl.textContent =
-                    "❌ Html5Qrcode 物件未定義，請確認是否正確引入 html5-qrcode.min.js";
+                errorEl.textContent = "❌ Html5Qrcode 物件未定義，請確認是否正確引入 html5-qrcode.min.js";
                 console.error("Html5Qrcode is not defined");
                 return;
             }
@@ -157,7 +167,7 @@
                     { deviceId: { exact: selectedCameraId } },
                     {
                         fps: 10,
-                        qrbox: { width: 250, height: 250 },
+                        qrbox: { width: 250, height: 250 }
                     },
                     async (decodedText) => { // 將 decodedText 宣告為 async
                         console.log("掃描成功，內容:", decodedText);
@@ -179,7 +189,7 @@
                         }
                         stopScanner();
                     },
-                    (errorMessage) => {
+                    errorMessage => {
                         // 略過頻繁的錯誤信息記錄
                         console.log("掃描錯誤:", errorMessage);
                     }
@@ -225,10 +235,10 @@
                 return;
             }
 
-            fetch("https://script.google.com/macros/s/AKfycbyzJ8aZwDPJ_Ii-p8Rv1HykheqocnnbsqNP6Ebtz2TJvlI8vv_IYF1qBLWRqgY8vs-s/exec", { // 請在此處更新您的 Google Apps Script URL
+            fetch("https://script.google.com/macros/s/YOUR_SCRIPT_ID/exec", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ staff, item, location, to, note, action: "submitForm" }) // 加入 action 參數
+                body: JSON.stringify({ staff, item, location, to, note, action: "submitForm" })
             })
                 .then(res => res.json())
                 .then(data => {
@@ -248,7 +258,7 @@
 
         // 新增一個函式來呼叫 Google Apps Script 以查詢地點
         async function getLocation(itemCode) {
-            const scriptUrl = `https://script.google.com/macros/s/AKfycbyzJ8aZwDPJ_Ii-p8Rv1HykheqocnnbsqNP6Ebtz2TJvlI8vv_IYF1qBLWRqgY8vs-s/exec?action=getLocation&itemCode=${encodeURIComponent(itemCode)}`; // 修正URL
+            const scriptUrl = `https://script.google.com/macros/s/YOUR_SCRIPT_ID/exec?action=getLocation&itemCode=${encodeURIComponent(itemCode)}`; // 修正URL
             const response = await fetch(scriptUrl);
             const data = await response.json();
             return data; // 假設 Google Apps Script 返回的 JSON 物件中有一個 "location" 屬性
@@ -258,10 +268,17 @@
         window.onload = async () => {
             console.log("window.onload 被呼叫");
             if (!isSecureContext) return;
-            await Promise.all([
-                loadStaffList(),
-                selectBackCamera()
-            ]);
+            try{
+              await Promise.all([
+                  loadStaffList(),
+                  selectBackCamera()
+              ]);
+            }catch(e){
+               console.error("Error during initialisation",e);
+               errorEl.textContent = "❌ 初始化失敗，請檢查網路連線或稍後重試";
+               return;
+            }
+
             if (selectedCameraId) {
                 setTimeout(startScanner, 1000); // Delay 1 second for iOS compatibility
             }
