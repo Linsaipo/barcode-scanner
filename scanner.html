@@ -33,10 +33,6 @@
     <input type="text" id="description" readonly><br><br>
     <label for="location">目前位置：</label>
     <input type="text" id="location"><br><br>
-     <label for="searchLocation">查詢地點：</label>
-    <input type="text" id="searchLocationInput">
-    <button id="searchLocationButton" onclick="searchLocation()">查詢地點</button><br><br>
-    <div id="searchLocationResult"></div><br><br>
     <label for="to">移至：</label>
     <input type="text" id="to"><br><br>
     <label for="note">備註：</label>
@@ -57,9 +53,8 @@
         const staffSelect = document.getElementById("staff");
         let selectedCameraId;
         let isSecureContext = window.isSecureContext;
-        const searchLocationInput = document.getElementById("searchLocationInput");
-        const searchLocationResult = document.getElementById("searchLocationResult");
         const descriptionInput = document.getElementById("description"); // 新增描述欄位的引用
+        const locationInput = document.getElementById("location");
 
         console.log("頁面載入時 - isSecureContext:", isSecureContext);
 
@@ -128,7 +123,7 @@
             }
         }
 
-       async function startScanner() {
+        async function startScanner() {
             console.log("startScanner() 被呼叫");
             if (!isSecureContext) {
                 errorEl.textContent = "❌ 請使用 HTTPS 或 localhost 訪問此頁面";
@@ -232,15 +227,13 @@
 
         async function searchLocation(itemCode) {
             console.log("searchLocation() 被呼叫，查詢的財產編號:", itemCode);
-            searchLocationResult.innerHTML = ""; // 清空之前的結果
             try {
                 const itemData = await getLocation(itemCode); // 獲取包含地點和描述的物件
                 console.log("查詢getLocation回傳結果",itemData)
-                document.getElementById("location").value = itemData.location;
+                locationInput.value = itemData.location;
                 descriptionInput.value = itemData.description;
-                searchLocationResult.textContent = `✅ 地點：${itemData.location}，描述：${itemData.description}`;
             } catch (error) {
-                searchLocationResult.textContent = `❌ 查詢地點失敗：${error.message}`;
+                errorEl.textContent = `❌ 查詢地點失敗：${error.message}`;
                 console.error("查詢地點錯誤:", error);
             }
         }
