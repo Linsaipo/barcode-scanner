@@ -159,10 +159,18 @@
             fps: 10,
             qrbox: { width: 250, height: 250 }
           },
-          decodedText => {
+          async decodedText => {
             console.log("掃描成功，內容:", decodedText);
             document.getElementById("item").value = decodedText;
             resultEl.textContent = `✅ 掃描成功！`;
+            try{
+              const location = await getLocation(decodedText);
+              document.getElementById("location").value = location;
+            }
+            catch(error){
+              errorEl.textContent = error.message;
+              document.getElementById("location").value = "地點錯誤";
+            }
             stopScanner();
           },
           errorMessage => {
@@ -172,78 +180,4 @@
         );
         document.getElementById("reader").classList.remove("loading");
         stopButton.style.display = "inline-block";
-        console.log("掃描器已啟動");
-      } catch (err) {
-        document.getElementById("reader").classList.remove("loading");
-        errorEl.textContent = `❌ 啟動相機失敗：${err.message}`;
-        retryButton.style.display = "inline-block";
-        console.error("啟動掃描器錯誤:", err);
-      }
-    }
-
-    function stopScanner() {
-      console.log("stopScanner() 被呼叫");
-      if (html5QrCode && html5QrCode.getState() === Html5QrcodeScannerState.SCANNING) {
-        html5QrCode
-          .stop()
-          .then(() => {
-            document.getElementById("reader").innerHTML = "";
-            stopButton.style.display = "none";
-            errorEl.textContent = "";
-            console.log("掃描器已停止");
-          })
-          .catch(err => {
-            errorEl.textContent = `❌ 停止掃描失敗：${err.message}`;
-            console.error("停止掃描錯誤:", err);
-          });
-      }
-    }
-
-    function submitForm() {
-      const staff = document.getElementById("staff").value.trim();
-      const item = document.getElementById("item").value.trim();
-      const location = document.getElementById("location").value.trim();
-      const to = document.getElementById("to").value.trim();
-      const note = document.getElementById("note").value.trim();
-
-      if (!staff || !item) {
-        errorEl.textContent = "❌ 請選擇員工並輸入品項";
-        return;
-      }
-
-      fetch("https://script.google.com/macros/s/AKfycbzK72r-Boa43dJJyKtAHooRjj4pA8qFiG3lJ4t_59uDD0M3nPFDQaqP8u1rTFe91I8alQ/exec", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ staff, item, location, to, note })
-      })
-        .then(res => res.json())
-        .then(data => {
-          if (data.result === "success") {
-            resultEl.textContent = "✅ 資料已成功寫入！";
-            errorEl.textContent = "";
-            document.getElementById("item").value = "";
-            staffSelect.value = ""; // Reset to "請選擇"
-        } else {
-          errorEl.textContent = "❌ 寫入失敗：" + data.message;
-        }
-      })
-        .catch(err => {
-          errorEl.textContent = "❌ 傳送錯誤：" + err;
-        });
-    }
-
-    // Initialize on page load
-    window.onload = async () => {
-      console.log("window.onload 被呼叫");
-      if (!isSecureContext) return;
-      await Promise.all([
-        loadStaffList(),
-        selectBackCamera()
-      ]);
-      if (selectedCameraId) {
-        setTimeout(startScanner, 1000); // Delay 1 second for iOS compatibility
-      }
-    };
-  </script>
-</body>
-</html>
+        console.
