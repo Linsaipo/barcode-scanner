@@ -27,9 +27,11 @@
     <div id="success" style="color:green; font-weight: bold;"></div>
     <div id="error" style="color:red; font-weight: bold;"></div>  <label for="staff">員工：</label>
     <select id="staff"></select><br><br>
-    <label for="item">品項：</label>
+    <label for="item">財產編號：</label>
     <input type="text" id="item" readonly><br><br>
-    <label for="location">地點：</label>
+    <label for="description">描述：</label>
+    <input type="text" id="description" readonly><br><br>
+    <label for="location">目前位置：</label>
     <input type="text" id="location"><br><br>
      <label for="searchLocation">查詢地點：</label>
     <input type="text" id="searchLocationInput">
@@ -57,6 +59,7 @@
         let isSecureContext = window.isSecureContext;
         const searchLocationInput = document.getElementById("searchLocationInput");
         const searchLocationResult = document.getElementById("searchLocationResult");
+        const descriptionInput = document.getElementById("description"); // 新增描述欄位的引用
 
         console.log("頁面載入時 - isSecureContext:", isSecureContext);
 
@@ -125,71 +128,71 @@
             }
         }
 
-        async function startScanner() {
-          console.log("startScanner() 被呼叫");
-          if (!isSecureContext) {
-            errorEl.textContent = "❌ 請使用 HTTPS 或 localhost 訪問此頁面";
-            return;
-          }
-          if (html5QrCode && html5QrCode.getState() === Html5QrcodeScannerState.SCANNING) {
-            errorEl.textContent = "❌ 掃描器已在運行";
-            return;
-          }
-
-          if (!selectedCameraId) {
-            errorEl.textContent = "❌ 正在載入相機配置...";
-            await selectBackCamera();
-            if (!selectedCameraId) {
-              errorEl.textContent = "❌ 無法選擇相機，請檢查設備";
-              return;
+       async function startScanner() {
+            console.log("startScanner() 被呼叫");
+            if (!isSecureContext) {
+                errorEl.textContent = "❌ 請使用 HTTPS 或 localhost 訪問此頁面";
+                return;
             }
-          }
+            if (html5QrCode && html5QrCode.getState() === Html5QrcodeScannerState.SCANNING) {
+                errorEl.textContent = "❌ 掃描器已在運行";
+                return;
+            }
 
-          resultEl.textContent = "";
-          errorEl.textContent = "";
-          retryButton.style.display = "none";
-          document.getElementById("reader").classList.add("loading");
+            if (!selectedCameraId) {
+                errorEl.textContent = "❌ 正在載入相機配置...";
+                await selectBackCamera();
+                if (!selectedCameraId) {
+                    errorEl.textContent = "❌ 無法選擇相機，請檢查設備";
+                    return;
+                }
+            }
 
-          if (typeof Html5Qrcode === 'undefined') {
-            errorEl.textContent =
-              "❌ Html5Qrcode 物件未定義，請確認是否正確引入 html5-qrcode.min.js";
-            console.error("Html5Qrcode is not defined");
-            return;
-          }
-          html5QrCode = new Html5Qrcode("reader");
+            resultEl.textContent = "";
+            errorEl.textContent = "";
+            retryButton.style.display = "none";
+            document.getElementById("reader").classList.add("loading");
 
-          try {
-            console.log("嘗試啟動掃描器，相機 ID:", selectedCameraId);
-            await html5QrCode.start(
-              { deviceId: { exact: selectedCameraId } },
-              {
-                fps: 10,
-                qrbox: { width: 250, height: 250 },
-              },
-              async (decodedText) => {
-                console.log("掃描成功，內容:", decodedText);
-                document.getElementById("item").value = decodedText;
-                resultEl.textContent = `✅ 掃描成功！`;
-                // 停止掃描器
-                stopScanner();
-                 // 掃描到財產編號後自動查詢
-                searchLocation(decodedText);
+            if (typeof Html5Qrcode === 'undefined') {
+                errorEl.textContent =
+                    "❌ Html5Qrcode 物件未定義，請確認是否正確引入 html5-qrcode.min.js";
+                console.error("Html5Qrcode is not defined");
+                return;
+            }
+            html5QrCode = new Html5Qrcode("reader");
 
-              },
-              (errorMessage) => {
-                // 略過頻繁的錯誤信息記錄
-                console.log("掃描錯誤:", errorMessage);
-              }
-            );
-            document.getElementById("reader").classList.remove("loading");
-            stopButton.style.display = "inline-block";
-            console.log("掃描器已啟動");
-          } catch (err) {
-            document.getElementById("reader").classList.remove("loading");
-            errorEl.textContent = `❌ 啟動相機失敗：${err.message}`;
-            retryButton.style.display = "inline-block";
-            console.error("啟動掃描器錯誤:", err);
-          }
+            try {
+                console.log("嘗試啟動掃描器，相機 ID:", selectedCameraId);
+                await html5QrCode.start(
+                    { deviceId: { exact: selectedCameraId } },
+                    {
+                        fps: 10,
+                        qrbox: { width: 250, height: 250 },
+                    },
+                    async (decodedText) => {
+                        console.log("掃描成功，內容:", decodedText);
+                        document.getElementById("item").value = decodedText;
+                        resultEl.textContent = `✅ 掃描成功！`;
+                        // 停止掃描器
+                        stopScanner();
+                        // 掃描到財產編號後自動查詢
+                        searchLocation(decodedText);
+
+                    },
+                    (errorMessage) => {
+                        // 略過頻繁的錯誤信息記錄
+                        console.log("掃描錯誤:", errorMessage);
+                    }
+                );
+                document.getElementById("reader").classList.remove("loading");
+                stopButton.style.display = "inline-block";
+                console.log("掃描器已啟動");
+            } catch (err) {
+                document.getElementById("reader").classList.remove("loading");
+                errorEl.textContent = `❌ 啟動相機失敗：${err.message}`;
+                retryButton.style.display = "inline-block";
+                console.error("啟動掃描器錯誤:", err);
+            }
         }
 
         function stopScanner() {
@@ -221,7 +224,7 @@
                 if (data.error) {
                     throw new Error(data.error);
                 }
-                return data.location;
+                return data; // 返回包含 location 和 description 的物件
             } catch (err) {
                 throw new Error(`查詢地點失敗：${err.message}`);
             }
@@ -231,11 +234,14 @@
             console.log("searchLocation() 被呼叫，查詢的財產編號:", itemCode);
             searchLocationResult.innerHTML = ""; // 清空之前的結果
             try {
-                const location = await getLocation(itemCode);
-                searchLocationResult.textContent = `✅ 地點：${location}`;
+                const itemData = await getLocation(itemCode); // 獲取包含地點和描述的物件
+                console.log("查詢getLocation回傳結果",itemData)
+                document.getElementById("location").value = itemData.location;
+                descriptionInput.value = itemData.description;
+                searchLocationResult.textContent = `✅ 地點：${itemData.location}，描述：${itemData.description}`;
             } catch (error) {
-                 searchLocationResult.textContent = `❌ 查詢地點失敗：${error.message}`;
-                 console.error("查詢地點錯誤:", error);
+                searchLocationResult.textContent = `❌ 查詢地點失敗：${error.message}`;
+                console.error("查詢地點錯誤:", error);
             }
         }
 
@@ -244,7 +250,7 @@
             const staff = document.getElementById("staff").value.trim();
             const item = document.getElementById("item").value.trim();
             const location = document.getElementById("location").value.trim();
-             const to = document.getElementById("to").value.trim();
+            const to = document.getElementById("to").value.trim();
             const note = document.getElementById("note").value.trim();
 
             if (!staff || !item) {
