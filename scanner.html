@@ -35,10 +35,15 @@
 <body>
     <div id="reader"></div>
     <div id="success" style="color:green; font-weight: bold;"></div>
-    <div id="error" style="color:red; font-weight: bold;"></div> <label for="staff">員工：</label>
+    <div id="error" style="color:red; font-weight: bold;"></div>
+    <label for="staff">員工：</label>
     <select id="staff"></select><br><br>
-    <label for="item">品項：</label>
+    <label for="item">財產編號：</label>
     <input type="text" id="item" readonly><br><br>
+    <label for="itemName">品項名：</label>
+    <input type="text" id="itemName" readonly><br><br>
+    <label for="description">描述：</label>
+    <input type="text" id="description" readonly><br><br>
     <label for="location">地點：</label>
     <input type="text" id="location"><br><br>
     <label for="to">移至：</label>
@@ -176,16 +181,22 @@
 
                         // 呼叫 Google Apps Script 函式來查詢地點
                         try {
-                            const locationData = await getLocation(decodedText); // 等待回應
-                            if (locationData) {
-                                document.getElementById("location").value = locationData.location; // 更新地點欄位
+                            const itemData = await getItemData(decodedText); // 等待回應
+                            if (itemData) {
+                                document.getElementById("location").value = itemData.location; // 更新地點欄位
+                                document.getElementById("itemName").value = itemData.itemName;
+                                document.getElementById("description").value = itemData.description;
                             } else {
                                 document.getElementById("location").value = "找不到地點";
+                                document.getElementById("itemName").value = "找不到品項名";
+                                document.getElementById("description").value = "找不到描述";
                             }
                         } catch (error) {
-                            errorEl.textContent = `❌ 查詢地點失敗：${error.message}`;
-                            console.error("查詢地點錯誤:", error);
+                            errorEl.textContent = `❌ 查詢資料失敗：${error.message}`;
+                            console.error("查詢資料錯誤:", error);
                             document.getElementById("location").value = "查詢錯誤";
+                            document.getElementById("itemName").value = "查詢錯誤";
+                            document.getElementById("description").value = "查詢錯誤";
                         }
                         stopScanner();
                     },
@@ -229,16 +240,18 @@
             const location = document.getElementById("location").value.trim();
             const to = document.getElementById("to").value.trim();
             const note = document.getElementById("note").value.trim();
+             const itemName = document.getElementById("itemName").value.trim();  // 取得品項名
+            const description = document.getElementById("description").value.trim(); // 取得描述
 
             if (!staff || !item) {
-                errorEl.textContent = "❌ 請選擇員工並輸入品項";
+                errorEl.textContent = "❌ 請選擇員工並輸入財產編號";
                 return;
             }
 
-            fetch("https://script.google.com/macros/s/YOUR_SCRIPT_ID/exec", {
+            fetch("https://script.google.com/macros/s/AKfycbyzJ8aZwDPJ_Ii-p8Rv1HykheqocnnbsqNP6Ebtz2TJvlI8vv_IYF1qBLWRqgY8vs-s/exec", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ staff, item, location, to, note, action: "submitForm" })
+                body: JSON.stringify({ staff, item, location, to, note, itemName, description, action: "submitForm" }) // 送出品項名和描述
             })
                 .then(res => res.json())
                 .then(data => {
@@ -247,6 +260,8 @@
                         errorEl.textContent = "";
                         document.getElementById("item").value = "";
                         staffSelect.value = ""; // Reset to "請選擇"
+                         document.getElementById("itemName").value = "";
+                         document.getElementById("description").value = "";
                     } else {
                         errorEl.textContent = "❌ 寫入失敗：" + data.message;
                     }
@@ -257,11 +272,11 @@
         }
 
         // 新增一個函式來呼叫 Google Apps Script 以查詢地點
-        async function getLocation(itemCode) {
-            const scriptUrl = `https://script.google.com/macros/s/AKfycbyzJ8aZwDPJ_Ii-p8Rv1HykheqocnnbsqNP6Ebtz2TJvlI8vv_IYF1qBLWRqgY8vs-s/exec?action=getLocation&itemCode=${encodeURIComponent(itemCode)}`; // 修正URL
+        async function getItemData(itemCode) {
+            const scriptUrl = `https://script.google.com/macros/s/AKfycbyzJ8aZwDPJ_Ii-p8Rv1HykheqocnnbsqNP6Ebtz2TJvlI8vv_IYF1qBLWRqgY8vs-s/exec?action=getItemData&itemCode=${encodeURIComponent(itemCode)}`; // 修正URL
             const response = await fetch(scriptUrl);
             const data = await response.json();
-            return data; // 假設 Google Apps Script 返回的 JSON 物件中有一個 "location" 屬性
+            return data;
         }
 
         // Initialize on page load
