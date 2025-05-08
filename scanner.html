@@ -75,7 +75,7 @@
             console.log("loadStaffList() 被呼叫");
             try {
                 // 替換為你的 Google Apps Script Web 應用程式 URL
-                const scriptUrl = "https://script.google.com/macros/s/YOUR_SCRIPT_ID/exec?action=getStaffList"; // 已修正的 URL
+                const scriptUrl = "https://script.google.com/macros/s/AKfycbyzJ8aZwDPJ_Ii-p8Rv1HykheqocnnbsqNP6Ebtz2TJvlI8vv_IYF1qBLWRqgY8vs-s/exec?action=getStaffList"; // 已修正的 URL
                 const response = await fetch(scriptUrl);
                 const staffList = await response.json();
 
@@ -258,7 +258,7 @@
 
         // 新增一個函式來呼叫 Google Apps Script 以查詢地點
         async function getLocation(itemCode) {
-            const scriptUrl = `https://script.google.com/macros/s/YOUR_SCRIPT_ID/exec?action=getLocation&itemCode=${encodeURIComponent(itemCode)}`; // 修正URL
+            const scriptUrl = `https://script.google.com/macros/s/AKfycbyzJ8aZwDPJ_Ii-p8Rv1HykheqocnnbsqNP6Ebtz2TJvlI8vv_IYF1qBLWRqgY8vs-s/exec?action=getLocation&itemCode=${encodeURIComponent(itemCode)}`; // 修正URL
             const response = await fetch(scriptUrl);
             const data = await response.json();
             return data; // 假設 Google Apps Script 返回的 JSON 物件中有一個 "location" 屬性
