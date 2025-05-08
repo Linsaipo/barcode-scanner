@@ -132,7 +132,7 @@
         async function startScanner() {
             console.log("startScanner() 被呼叫");
             if (!isSecureContext) {
-                errorEl.textContent = "❌ 請使用 HTTPS 或 localhost 訪問此頁面";
+                errorEl.textContent = "❌ 請使用 HTTPS 或 localhost 訪問此頁面以啟用攝影機";
                 return;
             }
             if (html5QrCode && html5QrCode.getState() === Html5QrcodeScannerState.SCANNING) {
@@ -268,19 +268,20 @@
         window.onload = async () => {
             console.log("window.onload 被呼叫");
             if (!isSecureContext) return;
-            try{
-              await Promise.all([
-                  loadStaffList(),
-                  selectBackCamera()
-              ]);
-            }catch(e){
-               console.error("Error during initialisation",e);
-               errorEl.textContent = "❌ 初始化失敗，請檢查網路連線或稍後重試";
-               return;
+            try {
+                await Promise.all([
+                    loadStaffList(),
+                    selectBackCamera() // 確保相機選擇也在初始化時完成
+                ]);
+            } catch (e) {
+                console.error("Error during initialization", e);
+                errorEl.textContent = "❌ 初始化失敗，請檢查網路連線或稍後重試";
+                return;
             }
 
+            // 只有在成功取得相機 ID 後才嘗試啟動掃描器
             if (selectedCameraId) {
-                setTimeout(startScanner, 1000); // Delay 1 second for iOS compatibility
+                setTimeout(startScanner, 1000); // 延遲 1 秒以確保相機初始化
             }
         };
     </script>
