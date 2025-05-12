@@ -40,6 +40,10 @@
                 html5QrCode.stop().then(() => {
                     document.getElementById("reader").innerHTML = "";
                     document.getElementById("stopButton").style.display = "none";
+                    console.log("掃描器已停止");
+                }).catch(err => {
+                    document.getElementById("error").textContent = `❌ 停止掃描失敗：${err.message}`;
+                    console.error("停止掃描錯誤:", err);
                 });
             }
         }
@@ -76,6 +80,7 @@
         let selectedCameraId;
 
         async function loadStaffList() {
+            console.log("loadStaffList() 被呼叫");
             try {
                 const response = await fetch(`${API_BASE}?action=getStaffList`);
                 if (!response.ok) {
@@ -86,33 +91,39 @@
                     const staffSelect = document.getElementById("staff");
                     staffSelect.innerHTML = '<option value="">請選擇</option>' +
                         staffList.map(name => `<option value="${name}">${name}</option>`).join("");
+                    console.log("loadStaffList() 成功載入員工清單:", staffList);
                 } else {
-                    document.getElementById("error").textContent = "❌ 員工清單讀取失敗：伺服器回應錯誤";
-                    console.error("員工清單錯誤：", staffList);
+                    const errorMessage = "❌ 員工清單讀取失敗：伺服器回應錯誤";
+                    document.getElementById("error").textContent = errorMessage;
+                    console.error("loadStaffList() 錯誤:", errorMessage, staffList);
                 }
             } catch (err) {
-                document.getElementById("error").textContent = "❌ 員工清單讀取錯誤：" + err.message;
-                console.error(err);
+                const errorMessage = `❌ 員工清單讀取錯誤：${err.message}`;
+                document.getElementById("error").textContent = errorMessage;
+                console.error("loadStaffList() 錯誤:", err);
             }
         }
 
         async function getItemData(itemCode) {
+            console.log("getItemData() 被呼叫，itemCode:", itemCode);
             try {
                 const response = await fetch(`${API_BASE}?action=getLocation&itemCode=${encodeURIComponent(itemCode)}`);
-                 if (!response.ok) {
+                if (!response.ok) {
                     throw new Error(`HTTP error! status: ${response.status}`);
                 }
                 const data = await response.json();
-                console.log("取得資料：", data);
+                console.log("getItemData() 成功取得資料:", data);
                 return data;
-            } catch(error){
-                 document.getElementById("error").textContent = "❌ 取得物品資料錯誤：" + error.message;
-                 console.error(error);
-                 return {error: true}; //Return an object with error property
+            } catch (error) {
+                const errorMessage = "❌ 取得物品資料錯誤：" + error.message;
+                document.getElementById("error").textContent = errorMessage;
+                console.error("getItemData() 錯誤:", error);
+                return { error: true }; // 返回帶有錯誤屬性的物件
             }
         }
 
         async function startScanner() {
+            console.log("startScanner() 被呼叫");
             const readerEl = document.getElementById("reader");
             document.getElementById("success").textContent = "";
             document.getElementById("error").textContent = "";
@@ -120,42 +131,69 @@
 
             try {
                 const devices = await Html5Qrcode.getCameras();
-                if (!devices.length) throw new Error("找不到攝影機");
+                if (!devices.length) {
+                    const errorMessage = "找不到攝影機，請檢查設備是否有可用相機";
+                    document.getElementById("error").textContent = errorMessage;
+                    console.error("startScanner() 錯誤:", errorMessage);
+                    throw new Error(errorMessage);
+                }
                 availableCameras = devices;
 
                 // 選擇後置鏡頭（排除廣角和望遠）
-                let rearCamera = devices.find(camera => 
-                    camera.label && 
-                    camera.label.toLowerCase().includes('rear') && 
-                    !camera.label.toLowerCase().includes('wide') && 
+                let rearCamera = devices.find(camera =>
+                    camera.label &&
+                    camera.label.toLowerCase().includes('rear') &&
+                    !camera.label.toLowerCase().includes('wide') &&
                     !camera.label.toLowerCase().includes('tele')
                 );
 
                 // 如果找不到符合條件的後置鏡頭，則使用第一個後置鏡頭或第一個可用鏡頭
                 selectedCameraId = rearCamera ? rearCamera.id : devices.find(camera => camera.label && camera.label.toLowerCase().includes('rear'))?.id || devices[0].id;
+                console.log("startScanner() 選擇的相機 ID:", selectedCameraId);
 
                 html5QrCode = new Html5Qrcode("reader");
-                await html5QrCode.start(
-                    { deviceId: { exact: selectedCameraId } }, // 使用選擇的相機 ID
-                    { fps: 10, qrbox: { width: 250, height: 250 } },
-                    async decodedText => {
-                        document.getElementById("item").value = decodedText;
-                        const data = await getItemData(decodedText);
-                        if (!data.error) { // Check for the error property
-                            document.getElementById("itemName").value = data.item || "";
-                            document.getElementById("description").value = data.desc || "";
-                            document.getElementById("location").value = data.location || "";
-                            document.getElementById("success").textContent = "✅ 掃描成功";
-                        } else {
-                            document.getElementById("error").textContent = "❌ 查無資料";
+                try {
+                    await html5QrCode.start(
+                        { deviceId: { exact: selectedCameraId } }, // 使用選擇的相機 ID
+                        { fps: 10, qrbox: { width: 250, height: 250 } },
+                        async decodedText => {
+                            console.log("掃描成功，內容:", decodedText);
+                            document.getElementById("item").value = decodedText;
+                            try {
+                                const data = await getItemData(decodedText);
+                                if (!data.error) { // 檢查是否有錯誤
+                                    document.getElementById("itemName").value = data.item || "";
+                                    document.getElementById("description").value = data.desc || "";
+                                    document.getElementById("location").value = data.location || "";
+                                    document.getElementById("success").textContent = "✅ 掃描成功";
+                                } else {
+                                    document.getElementById("error").textContent = "❌ 查無資料";
+                                }
+                            } catch (error) {
+                                document.getElementById("error").textContent = "❌ 處理掃描結果時發生錯誤：" + error.message;
+                                console.error("處理掃描結果錯誤:", error);
+                            } finally {
+                                stopScanner();
+                            }
+                        },
+                        errorMessage => {
+                            // 略過頻繁的錯誤訊息記錄
+                            console.log("掃描錯誤:", errorMessage);
                         }
-                        stopScanner();
-                    }
-                );
-                document.getElementById("stopButton").style.display = "inline-block";
+                    );
+                    document.getElementById("stopButton").style.display = "inline-block";
+                    console.log("掃描器已啟動");
+                } catch (startError) {
+                    const errorMessage = `啟動掃描器失敗：${startError.message}`;
+                    document.getElementById("error").textContent = errorMessage;
+                    console.error("startScanner() 啟動掃描器錯誤:", startError);
+                    throw startError; // 將錯誤重新拋出，以便在外部 catch 區塊中處理
+                }
+
             } catch (err) {
                 document.getElementById("error").textContent = `❌ 啟動失敗：${err.message}`;
-                console.error(err);
+                console.error("startScanner() 錯誤:", err);
+                //  retryButton.style.display = "inline-block"; // 移除此行，避免在所有錯誤情況下顯示重試按鈕
             } finally {
                 readerEl.classList.remove("loading");
             }
@@ -164,6 +202,7 @@
 
 
         function submitForm() {
+            console.log("submitForm() 被呼叫");
             const staff = document.getElementById("staff").value.trim();
             const item = document.getElementById("item").value.trim();
             const location = document.getElementById("location").value.trim();
@@ -171,7 +210,9 @@
             const note = document.getElementById("note").value.trim();
 
             if (!staff || !item) {
-                document.getElementById("error").textContent = "❌ 請選擇員工並掃描財產編號";
+                const errorMessage = "❌ 請選擇員工並掃描財產編號";
+                document.getElementById("error").textContent = errorMessage;
+                console.error("submitForm() 錯誤:", errorMessage);
                 return;
             }
 
@@ -187,33 +228,49 @@
                     if (!res.ok) {
                         throw new Error(`HTTP error! status: ${res.status}`);
                     }
-                   return res.json()
+                    return res.json();
                 })
                 .then(data => {
                     if (data.result === "success") {
                         document.getElementById("success").textContent = "✅ 寫入成功";
                         document.getElementById("error").textContent = "";
+                        console.log("submitForm() 資料寫入成功");
                     } else {
-                        document.getElementById("error").textContent = "❌ 寫入失敗：" + (data.message || "未知錯誤");
+                        const errorMessage = "❌ 寫入失敗：" + (data.message || "未知錯誤");
+                        document.getElementById("error").textContent = errorMessage;
+                        console.error("submitForm() 寫入失敗:", errorMessage, data);
                     }
                 })
                 .catch(err => {
-                    document.getElementById("error").textContent = "❌ 發送失敗：" + err.message;
+                    const errorMessage = "❌ 發送失敗：" + err.message;
+                    document.getElementById("error").textContent = errorMessage;
+                    console.error("submitForm() 錯誤:", err);
                 });
         }
 
         window.onload = () => {
+            console.log("window.onload 被呼叫");
             if (window.isSecureContext) {
                 loadStaffList();
                 Html5Qrcode.getCameras().then(devices => {
                     availableCameras = devices;
-                    startScanner(); // Start the scanner after camera selection
+                    if (devices && devices.length) {
+                         startScanner(); // Start the scanner after camera selection
+                    }
+                    else{
+                       document.getElementById("error").textContent = "❌ 無法存取相機，請檢查您的裝置或瀏覽器設定。";
+                       console.error("無法取得相機裝置：");
+                    }
+
                 }).catch(err => {
-                    document.getElementById("error").textContent = "❌ 無法存取相機，請允許瀏覽器權限：" + err.message;
-                    console.error("無法取得相機裝置：", err);
+                    const errorMessage = "❌ 無法存取相機，請允許瀏覽器權限：" + err.message;
+                    document.getElementById("error").textContent = errorMessage;
+                    console.error("window.onload 無法取得相機裝置：", err);
                 });
             } else {
-                document.getElementById("error").textContent = "❌ 請使用 HTTPS 開啟本頁";
+                const errorMessage = "❌ 請使用 HTTPS 開啟本頁";
+                document.getElementById("error").textContent = errorMessage;
+                console.error("window.onload insecure context");
             }
         };
     </script>
