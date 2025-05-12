@@ -4,7 +4,7 @@
     <title>條碼掃描測試</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <style>
-        /* 您的 CSS 樣式 */
+        /* 你的 CSS 樣式 */
         #reader {
             width: 100%;
             max-width: 600px;
@@ -35,16 +35,6 @@
         let html5QrCode;
         let selectedCameraId;
 
-        function switchCamera() {
-            const selected = document.getElementById("cameraSelect").value;
-            if (selected && selected !== selectedCameraId) {
-                selectedCameraId = selected;
-                localStorage.setItem("preferredCameraId", selected);
-                stopScanner();
-                setTimeout(startScanner, 300); // 延遲後啟動掃描器
-            }
-        }
-
         function stopScanner() {
             if (html5QrCode) {
                 html5QrCode.stop().then(() => {
@@ -56,10 +46,6 @@
     </script>
 </head>
 <body>
-    <div style="max-width:600px;margin:0 auto 20px auto;text-align:center;">
-        <label for="cameraSelect" style="font-weight:bold;">🎥 選擇鏡頭：</label><br>
-        <select id="cameraSelect" onchange="switchCamera()" style="padding:6px;width:90%;max-width:300px;"></select>
-    </div>
     <div id="reader"></div>
     <div id="success" style="color:green; font-weight: bold;"></div>
     <div id="error" style="color:red; font-weight: bold;"></div>
@@ -136,13 +122,17 @@
                 const devices = await Html5Qrcode.getCameras();
                 if (!devices.length) throw new Error("找不到攝影機");
                 availableCameras = devices;
-                const cameraSelect = document.getElementById("cameraSelect");
-                cameraSelect.innerHTML = devices.map((d, i) => `<option value="${d.id}">${d.label || `鏡頭 ${i + 1}`}</option>`).join("");
 
-                // 嘗試恢復上次選擇的相機
-                const savedCameraId = localStorage.getItem("preferredCameraId");
-                selectedCameraId = savedCameraId || devices[0].id;  // 如果沒有保存，則使用第一個
-                cameraSelect.value = selectedCameraId; // 設定下拉選單的值
+                // 選擇後置鏡頭（排除廣角和望遠）
+                let rearCamera = devices.find(camera => 
+                    camera.label && 
+                    camera.label.toLowerCase().includes('rear') && 
+                    !camera.label.toLowerCase().includes('wide') && 
+                    !camera.label.toLowerCase().includes('tele')
+                );
+
+                // 如果找不到符合條件的後置鏡頭，則使用第一個後置鏡頭或第一個可用鏡頭
+                selectedCameraId = rearCamera ? rearCamera.id : devices.find(camera => camera.label && camera.label.toLowerCase().includes('rear'))?.id || devices[0].id;
 
                 html5QrCode = new Html5Qrcode("reader");
                 await html5QrCode.start(
@@ -217,15 +207,7 @@
                 loadStaffList();
                 Html5Qrcode.getCameras().then(devices => {
                     availableCameras = devices;
-                    const cameraSelect = document.getElementById("cameraSelect");
-                    cameraSelect.innerHTML = devices.map((d, i) => `<option value="${d.id}">${d.label || `鏡頭 ${i + 1}`}</option>`).join("");
-
-                    // 嘗試恢復上次選擇的相機
-                    const savedCameraId = localStorage.getItem("preferredCameraId");
-                    selectedCameraId = savedCameraId || devices[0].id; // 如果沒有保存，則使用第一個
-                    cameraSelect.value = selectedCameraId;  // 初始化下拉選單
-
-                    setTimeout(startScanner, 500);
+                    startScanner(); // Start the scanner after camera selection
                 }).catch(err => {
                     document.getElementById("error").textContent = "❌ 無法存取相機，請允許瀏覽器權限：" + err.message;
                     console.error("無法取得相機裝置：", err);
