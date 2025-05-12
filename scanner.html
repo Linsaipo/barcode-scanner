@@ -95,6 +95,7 @@
                 staffSelect.innerHTML = '<option value="">請選擇</option>' +
                     staffList.map(name => `<option value="${name}">${name}</option>`).join("");
                 console.log("loadStaffList() 成功載入員工清單:", staffList);
+                 staffSelect.disabled = false; // 確保員工選擇欄位可用
             } catch (err) {
                 errorEl.textContent = `❌ 無法載入員工清單：${err.message}`;
                 console.error("loadStaffList() 錯誤:", err);
@@ -240,7 +241,7 @@
             const location = document.getElementById("location").value.trim();
             const to = document.getElementById("to").value.trim();
             const note = document.getElementById("note").value.trim();
-             const itemName = document.getElementById("itemName").value.trim();  // 取得品項名
+            const itemName = document.getElementById("itemName").value.trim();  // 取得品項名
             const description = document.getElementById("description").value.trim(); // 取得描述
 
             if (!staff || !item) {
@@ -260,8 +261,8 @@
                         errorEl.textContent = "";
                         document.getElementById("item").value = "";
                         staffSelect.value = ""; // Reset to "請選擇"
-                         document.getElementById("itemName").value = "";
-                         document.getElementById("description").value = "";
+                        document.getElementById("itemName").value = "";
+                        document.getElementById("description").value = "";
                     } else {
                         errorEl.textContent = "❌ 寫入失敗：" + data.message;
                     }
