@@ -4,7 +4,7 @@
     <title>條碼掃描測試</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <style>
-        /* 你的 CSS 樣式 */
+        /* 您的 CSS 樣式 */
         #reader {
             width: 100%;
             max-width: 600px;
@@ -42,6 +42,15 @@
                 localStorage.setItem("preferredCameraId", selected);
                 stopScanner();
                 setTimeout(startScanner, 300); // 延遲後啟動掃描器
+            }
+        }
+
+        function stopScanner() {
+            if (html5QrCode) {
+                html5QrCode.stop().then(() => {
+                    document.getElementById("reader").innerHTML = "";
+                    document.getElementById("stopButton").style.display = "none";
+                });
             }
         }
     </script>
@@ -83,24 +92,38 @@
         async function loadStaffList() {
             try {
                 const response = await fetch(`${API_BASE}?action=getStaffList`);
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
                 const staffList = await response.json();
                 if (Array.isArray(staffList)) {
-                    document.getElementById("staff").innerHTML = '<option value="">請選擇</option>' +
+                    const staffSelect = document.getElementById("staff");
+                    staffSelect.innerHTML = '<option value="">請選擇</option>' +
                         staffList.map(name => `<option value="${name}">${name}</option>`).join("");
                 } else {
-                    document.getElementById("error").textContent = "❌ 員工清單讀取失敗";
+                    document.getElementById("error").textContent = "❌ 員工清單讀取失敗：伺服器回應錯誤";
+                    console.error("員工清單錯誤：", staffList);
                 }
             } catch (err) {
-                document.getElementById("error").textContent = "❌ 員工清單讀取錯誤";
+                document.getElementById("error").textContent = "❌ 員工清單讀取錯誤：" + err.message;
                 console.error(err);
             }
         }
 
         async function getItemData(itemCode) {
-            const response = await fetch(`${API_BASE}?action=getLocation&itemCode=${encodeURIComponent(itemCode)}`);
-            const data = await response.json();
-            console.log("取得資料：", data);
-            return data;
+            try {
+                const response = await fetch(`${API_BASE}?action=getLocation&itemCode=${encodeURIComponent(itemCode)}`);
+                 if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                const data = await response.json();
+                console.log("取得資料：", data);
+                return data;
+            } catch(error){
+                 document.getElementById("error").textContent = "❌ 取得物品資料錯誤：" + error.message;
+                 console.error(error);
+                 return {error: true}; //Return an object with error property
+            }
         }
 
         async function startScanner() {
@@ -128,7 +151,7 @@
                     async decodedText => {
                         document.getElementById("item").value = decodedText;
                         const data = await getItemData(decodedText);
-                        if (!data.error) {
+                        if (!data.error) { // Check for the error property
                             document.getElementById("itemName").value = data.item || "";
                             document.getElementById("description").value = data.desc || "";
                             document.getElementById("location").value = data.location || "";
@@ -148,14 +171,7 @@
             }
         }
 
-        function stopScanner() {
-            if (html5QrCode) {
-                html5QrCode.stop().then(() => {
-                    document.getElementById("reader").innerHTML = "";
-                    document.getElementById("stopButton").style.display = "none";
-                });
-            }
-        }
+
 
         function submitForm() {
             const staff = document.getElementById("staff").value.trim();
@@ -177,7 +193,12 @@
                     staff, item, location, to, note
                 })
             })
-                .then(res => res.json())
+                .then(res => {
+                    if (!res.ok) {
+                        throw new Error(`HTTP error! status: ${res.status}`);
+                    }
+                   return res.json()
+                })
                 .then(data => {
                     if (data.result === "success") {
                         document.getElementById("success").textContent = "✅ 寫入成功";
@@ -187,7 +208,7 @@
                     }
                 })
                 .catch(err => {
-                    document.getElementById("error").textContent = "❌ 發送失敗：" + err;
+                    document.getElementById("error").textContent = "❌ 發送失敗：" + err.message;
                 });
         }
 
@@ -206,7 +227,7 @@
 
                     setTimeout(startScanner, 500);
                 }).catch(err => {
-                    document.getElementById("error").textContent = "❌ 無法存取相機，請允許瀏覽器權限";
+                    document.getElementById("error").textContent = "❌ 無法存取相機，請允許瀏覽器權限：" + err.message;
                     console.error("無法取得相機裝置：", err);
                 });
             } else {
