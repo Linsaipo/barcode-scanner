@@ -31,14 +31,17 @@
         }
     </style>
     <script src="https://unpkg.com/html5-qrcode@2.3.4/html5-qrcode.min.js"></script>
-    <script>  // 將 switchCamera 移到正確的 <script> 標籤內
+    <script>
+        let html5QrCode;
+        let selectedCameraId;
+
         function switchCamera() {
             const selected = document.getElementById("cameraSelect").value;
             if (selected && selected !== selectedCameraId) {
                 selectedCameraId = selected;
                 localStorage.setItem("preferredCameraId", selected);
                 stopScanner();
-                setTimeout(startScanner, 300);
+                setTimeout(startScanner, 300); // 延遲後啟動掃描器
             }
         }
     </script>
@@ -112,14 +115,15 @@
                 availableCameras = devices;
                 const cameraSelect = document.getElementById("cameraSelect");
                 cameraSelect.innerHTML = devices.map((d, i) => `<option value="${d.id}">${d.label || `鏡頭 ${i + 1}`}</option>`).join("");
-                selectedCameraId = devices.find(d => d.label.toLowerCase().includes("environment"))?.id ||
-                    devices.find(d => d.label.toLowerCase().includes("back"))?.id ||
-                    devices[0].id;
-                cameraSelect.value = selectedCameraId;
+
+                // 嘗試恢復上次選擇的相機
+                const savedCameraId = localStorage.getItem("preferredCameraId");
+                selectedCameraId = savedCameraId || devices[0].id;  // 如果沒有保存，則使用第一個
+                cameraSelect.value = selectedCameraId; // 設定下拉選單的值
 
                 html5QrCode = new Html5Qrcode("reader");
                 await html5QrCode.start(
-                    { deviceId: { exact: selectedCameraId } },
+                    { deviceId: { exact: selectedCameraId } }, // 使用選擇的相機 ID
                     { fps: 10, qrbox: { width: 250, height: 250 } },
                     async decodedText => {
                         document.getElementById("item").value = decodedText;
@@ -195,13 +199,11 @@
                     const cameraSelect = document.getElementById("cameraSelect");
                     cameraSelect.innerHTML = devices.map((d, i) => `<option value="${d.id}">${d.label || `鏡頭 ${i + 1}`}</option>`).join("");
 
+                    // 嘗試恢復上次選擇的相機
                     const savedCameraId = localStorage.getItem("preferredCameraId");
-                    const defaultCamera = devices.find(d => d.id === savedCameraId) ||
-                        devices.find(d => d.label.toLowerCase().includes("environment")) ||
-                        devices.find(d => d.label.toLowerCase().includes("back")) ||
-                        devices[0];
-                    selectedCameraId = defaultCamera?.id;
-                    cameraSelect.value = selectedCameraId;
+                    selectedCameraId = savedCameraId || devices[0].id; // 如果沒有保存，則使用第一個
+                    cameraSelect.value = selectedCameraId;  // 初始化下拉選單
+
                     setTimeout(startScanner, 500);
                 }).catch(err => {
                     document.getElementById("error").textContent = "❌ 無法存取相機，請允許瀏覽器權限";
