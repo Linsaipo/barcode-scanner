@@ -31,37 +31,15 @@
         }
     </style>
     <script src="https://unpkg.com/html5-qrcode@2.3.4/html5-qrcode.min.js"></script>
-    <script>
-        let html5QrCode;
-        let selectedCameraId;
-
-        function stopScanner() {
-            if (html5QrCode) {
-                html5QrCode.stop().then(() => {
-                    document.getElementById("reader").innerHTML = "";
-                    document.getElementById("stopButton").style.display = "none";
-                    console.log("掃描器已停止");
-                }).catch(err => {
-                    document.getElementById("error").textContent = `❌ 停止掃描失敗：${err.message}`;
-                    console.error("停止掃描錯誤:", err);
-                });
-            }
-        }
-    </script>
 </head>
 <body>
     <div id="reader"></div>
     <div id="success" style="color:green; font-weight: bold;"></div>
-    <div id="error" style="color:red; font-weight: bold;"></div>
-    <label for="staff">員工：</label>
+    <div id="error" style="color:red; font-weight: bold;"></div> <label for="staff">員工：</label>
     <select id="staff"></select><br><br>
-    <label for="item">財產編號：</label>
+    <label for="item">品項：</label>
     <input type="text" id="item" readonly><br><br>
-    <label for="itemName">品項名：</label>
-    <input type="text" id="itemName" readonly><br><br>
-    <label for="description">描述：</label>
-    <input type="text" id="description" readonly><br><br>
-    <label for="location">目前位置：</label>
+    <label for="location">地點：</label>
     <input type="text" id="location"><br><br>
     <label for="to">移至：</label>
     <input type="text" id="to"><br><br>
@@ -74,135 +52,178 @@
     <button onclick="submitForm()">送出</button>
 
     <script>
-        const API_BASE = "https://script.google.com/macros/s/AKfycbyzJ8aZwDPJ_Ii-p8Rv1HykheqocnnbsqNP6Ebtz2TJvlI8vv_IYF1qBLWRqgY8vs-s/exec";
+        // 你的 JavaScript 程式碼
         let html5QrCode;
-        let availableCameras = [];
+        const resultEl = document.getElementById("success");
+        const errorEl = document.getElementById("error");
+        const stopButton = document.getElementById("stopButton");
+        const retryButton = document.getElementById("retryButton");
+        const staffSelect = document.getElementById("staff");
         let selectedCameraId;
+        let isSecureContext = window.isSecureContext;
 
+        console.log("頁面載入時 - isSecureContext:", isSecureContext);
+
+        // Check for secure context (HTTPS or localhost)
+        if (!isSecureContext) {
+            errorEl.textContent = "❌ 請使用 HTTPS 或 localhost 訪問此頁面以啟用攝影機";
+            document.querySelectorAll("button").forEach(btn => btn.disabled = true);
+        }
+
+        // Load staff list from Google Sheets using fetch
         async function loadStaffList() {
             console.log("loadStaffList() 被呼叫");
             try {
-                const response = await fetch(`${API_BASE}?action=getStaffList`);
-                if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
-                }
+                // 替換為你的 Google Apps Script Web 應用程式 URL
+                const scriptUrl = "https://script.google.com/macros/s/YOUR_SCRIPT_ID/exec?action=getStaffList"; // 已修正的 URL
+                const response = await fetch(scriptUrl);
                 const staffList = await response.json();
-                if (Array.isArray(staffList)) {
-                    const staffSelect = document.getElementById("staff");
-                    staffSelect.innerHTML = '<option value="">請選擇</option>' +
-                        staffList.map(name => `<option value="${name}">${name}</option>`).join("");
-                    console.log("loadStaffList() 成功載入員工清單:", staffList);
-                } else {
-                    const errorMessage = "❌ 員工清單讀取失敗：伺服器回應錯誤";
-                    document.getElementById("error").textContent = errorMessage;
-                    console.error("loadStaffList() 錯誤:", errorMessage, staffList);
+
+                // 檢查是否成功獲取到員工清單
+                if (!staffList || !Array.isArray(staffList) || staffList.length === 0) {
+                    errorEl.textContent = "❌ 無法取得員工清單或清單為空";
+                    console.error("loadStaffList() 錯誤: 無效的員工清單", staffList);
+                    staffSelect.disabled = true;
+                    return; // 提前返回，避免後續錯誤
                 }
+
+                staffSelect.innerHTML = '<option value="">請選擇</option>' +
+                    staffList.map(name => `<option value="${name}">${name}</option>`).join("");
+                console.log("loadStaffList() 成功載入員工清單:", staffList);
             } catch (err) {
-                const errorMessage = `❌ 員工清單讀取錯誤：${err.message}`;
-                document.getElementById("error").textContent = errorMessage;
+                errorEl.textContent = `❌ 無法載入員工清單：${err.message}`;
                 console.error("loadStaffList() 錯誤:", err);
+                staffSelect.disabled = true;
             }
         }
 
-        async function getItemData(itemCode) {
-            console.log("getItemData() 被呼叫，itemCode:", itemCode);
+        async function selectBackCamera() {
+            if (!isSecureContext) return;
+            console.log("selectBackCamera() 被呼叫");
             try {
-                const response = await fetch(`${API_BASE}?action=getLocation&itemCode=${encodeURIComponent(itemCode)}`);
-                if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
+                const cameras = await Html5Qrcode.getCameras();
+                console.log("可用相機:", cameras);
+                if (cameras && cameras.length) {
+                    // 嘗試找到後置主鏡頭
+                    const rearCamera = cameras.find(camera => {
+                        const label = camera.label ? camera.label.toLowerCase() : "";
+                        return label.includes("後置") && !label.includes("廣角") && !label.includes("長焦") && !label.includes("telephoto");
+                    });
+
+                    // 備用方案：找到包含 "後置" 或 "rear" 的鏡頭
+                    const fallbackBackCamera = cameras.find(camera => {
+                        const label = camera.label ? camera.label.toLowerCase() : "";
+                        return label.includes("後置") || label.includes("rear");
+                    });
+
+                    // 如果找到後置主鏡頭，則使用它，否則使用備用方案，最後再不行才用第一個
+                    selectedCameraId = rearCamera ? rearCamera.id : (fallbackBackCamera ? fallbackBackCamera.id : cameras[0].id);
+                    console.log("選擇的相機 ID:", selectedCameraId);
+                } else {
+                    errorEl.textContent = "❌ 找不到攝影機，請檢查設備是否有可用相機";
+                    console.error("找不到攝影機");
                 }
-                const data = await response.json();
-                console.log("getItemData() 成功取得資料:", data);
-                return data;
-            } catch (error) {
-                const errorMessage = "❌ 取得物品資料錯誤：" + error.message;
-                document.getElementById("error").textContent = errorMessage;
-                console.error("getItemData() 錯誤:", error);
-                return { error: true }; // 返回帶有錯誤屬性的物件
+            } catch (err) {
+                errorEl.textContent = `❌ 無法取得攝影機：${err.message}`;
+                console.error("selectBackCamera() 錯誤:", err);
             }
         }
 
         async function startScanner() {
             console.log("startScanner() 被呼叫");
-            const readerEl = document.getElementById("reader");
-            document.getElementById("success").textContent = "";
-            document.getElementById("error").textContent = "";
-            readerEl.classList.add("loading");
+            if (!isSecureContext) {
+                errorEl.textContent = "❌ 請使用 HTTPS 或 localhost 訪問此頁面";
+                return;
+            }
+            if (html5QrCode && html5QrCode.getState() === Html5QrcodeScannerState.SCANNING) {
+                errorEl.textContent = "❌ 掃描器已在運行";
+                return;
+            }
+
+            if (!selectedCameraId) {
+                errorEl.textContent = "❌ 正在載入相機配置...";
+                await selectBackCamera();
+                if (!selectedCameraId) {
+                    errorEl.textContent = "❌ 無法選擇相機，請檢查設備";
+                    return;
+                }
+            }
+
+            resultEl.textContent = "";
+            errorEl.textContent = "";
+            retryButton.style.display = "none";
+            document.getElementById("reader").classList.add("loading");
+
+            if (typeof Html5Qrcode === 'undefined') {
+                errorEl.textContent = "❌ Html5Qrcode 物件未定義，請確認是否正確引入 html5-qrcode.min.js";
+                console.error("Html5Qrcode is not defined");
+                return;
+            }
+            html5QrCode = new Html5Qrcode("reader");
 
             try {
-                const devices = await Html5Qrcode.getCameras();
-                if (!devices.length) {
-                    const errorMessage = "找不到攝影機，請檢查設備是否有可用相機";
-                    document.getElementById("error").textContent = errorMessage;
-                    console.error("startScanner() 錯誤:", errorMessage);
-                    throw new Error(errorMessage);
-                }
-                availableCameras = devices;
+                console.log("嘗試啟動掃描器，相機 ID:", selectedCameraId);
+                await html5QrCode.start(
+                    { deviceId: { exact: selectedCameraId } },
+                    {
+                        fps: 10,
+                        qrbox: { width: 250, height: 250 }
+                    },
+                    async (decodedText) => { // 將 decodedText 宣告為 async
+                        console.log("掃描成功，內容:", decodedText);
+                        document.getElementById("item").value = decodedText;
+                        resultEl.textContent = `✅ 掃描成功！`;
 
-                // 選擇後置鏡頭（排除廣角和望遠）
-                let rearCamera = devices.find(camera =>
-                    camera.label &&
-                    camera.label.toLowerCase().includes('rear') &&
-                    !camera.label.toLowerCase().includes('wide') &&
-                    !camera.label.toLowerCase().includes('tele')
-                );
-
-                // 如果找不到符合條件的後置鏡頭，則使用第一個後置鏡頭或第一個可用鏡頭
-                selectedCameraId = rearCamera ? rearCamera.id : devices.find(camera => camera.label && camera.label.toLowerCase().includes('rear'))?.id || devices[0].id;
-                console.log("startScanner() 選擇的相機 ID:", selectedCameraId);
-
-                html5QrCode = new Html5Qrcode("reader");
-                try {
-                    await html5QrCode.start(
-                        { deviceId: { exact: selectedCameraId } }, // 使用選擇的相機 ID
-                        { fps: 10, qrbox: { width: 250, height: 250 } },
-                        async decodedText => {
-                            console.log("掃描成功，內容:", decodedText);
-                            document.getElementById("item").value = decodedText;
-                            try {
-                                const data = await getItemData(decodedText);
-                                if (!data.error) { // 檢查是否有錯誤
-                                    document.getElementById("itemName").value = data.item || "";
-                                    document.getElementById("description").value = data.desc || "";
-                                    document.getElementById("location").value = data.location || "";
-                                    document.getElementById("success").textContent = "✅ 掃描成功";
-                                } else {
-                                    document.getElementById("error").textContent = "❌ 查無資料";
-                                }
-                            } catch (error) {
-                                document.getElementById("error").textContent = "❌ 處理掃描結果時發生錯誤：" + error.message;
-                                console.error("處理掃描結果錯誤:", error);
-                            } finally {
-                                stopScanner();
+                        // 呼叫 Google Apps Script 函式來查詢地點
+                        try {
+                            const locationData = await getLocation(decodedText); // 等待回應
+                            if (locationData) {
+                                document.getElementById("location").value = locationData.location; // 更新地點欄位
+                            } else {
+                                document.getElementById("location").value = "找不到地點";
                             }
-                        },
-                        errorMessage => {
-                            // 略過頻繁的錯誤訊息記錄
-                            console.log("掃描錯誤:", errorMessage);
+                        } catch (error) {
+                            errorEl.textContent = `❌ 查詢地點失敗：${error.message}`;
+                            console.error("查詢地點錯誤:", error);
+                            document.getElementById("location").value = "查詢錯誤";
                         }
-                    );
-                    document.getElementById("stopButton").style.display = "inline-block";
-                    console.log("掃描器已啟動");
-                } catch (startError) {
-                    const errorMessage = `啟動掃描器失敗：${startError.message}`;
-                    document.getElementById("error").textContent = errorMessage;
-                    console.error("startScanner() 啟動掃描器錯誤:", startError);
-                    throw startError; // 將錯誤重新拋出，以便在外部 catch 區塊中處理
-                }
-
+                        stopScanner();
+                    },
+                    errorMessage => {
+                        // 略過頻繁的錯誤信息記錄
+                        console.log("掃描錯誤:", errorMessage);
+                    }
+                );
+                document.getElementById("reader").classList.remove("loading");
+                stopButton.style.display = "inline-block";
+                console.log("掃描器已啟動");
             } catch (err) {
-                document.getElementById("error").textContent = `❌ 啟動失敗：${err.message}`;
-                console.error("startScanner() 錯誤:", err);
-                //  retryButton.style.display = "inline-block"; // 移除此行，避免在所有錯誤情況下顯示重試按鈕
-            } finally {
-                readerEl.classList.remove("loading");
+                document.getElementById("reader").classList.remove("loading");
+                errorEl.textContent = `❌ 啟動相機失敗：${err.message}`;
+                retryButton.style.display = "inline-block";
+                console.error("啟動掃描器錯誤:", err);
             }
         }
 
-
+        function stopScanner() {
+            console.log("stopScanner() 被呼叫");
+            if (html5QrCode && html5QrCode.getState() === Html5QrcodeScannerState.SCANNING) {
+                html5QrCode
+                    .stop()
+                    .then(() => {
+                        document.getElementById("reader").innerHTML = "";
+                        stopButton.style.display = "none";
+                        errorEl.textContent = "";
+                        console.log("掃描器已停止");
+                    })
+                    .catch(err => {
+                        errorEl.textContent = `❌ 停止掃描失敗：${err.message}`;
+                        console.error("停止掃描錯誤:", err);
+                    });
+            }
+        }
 
         function submitForm() {
-            console.log("submitForm() 被呼叫");
             const staff = document.getElementById("staff").value.trim();
             const item = document.getElementById("item").value.trim();
             const location = document.getElementById("location").value.trim();
@@ -210,67 +231,56 @@
             const note = document.getElementById("note").value.trim();
 
             if (!staff || !item) {
-                const errorMessage = "❌ 請選擇員工並掃描財產編號";
-                document.getElementById("error").textContent = errorMessage;
-                console.error("submitForm() 錯誤:", errorMessage);
+                errorEl.textContent = "❌ 請選擇員工並輸入品項";
                 return;
             }
 
-            fetch(API_BASE, {
+            fetch("https://script.google.com/macros/s/YOUR_SCRIPT_ID/exec", {
                 method: "POST",
-                headers: { "Content-Type": "application/x-www-form-urlencoded" },
-                body: new URLSearchParams({
-                    action: "submitForm",
-                    staff, item, location, to, note
-                })
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ staff, item, location, to, note, action: "submitForm" })
             })
-                .then(res => {
-                    if (!res.ok) {
-                        throw new Error(`HTTP error! status: ${res.status}`);
-                    }
-                    return res.json();
-                })
+                .then(res => res.json())
                 .then(data => {
                     if (data.result === "success") {
-                        document.getElementById("success").textContent = "✅ 寫入成功";
-                        document.getElementById("error").textContent = "";
-                        console.log("submitForm() 資料寫入成功");
+                        resultEl.textContent = "✅ 資料已成功寫入！";
+                        errorEl.textContent = "";
+                        document.getElementById("item").value = "";
+                        staffSelect.value = ""; // Reset to "請選擇"
                     } else {
-                        const errorMessage = "❌ 寫入失敗：" + (data.message || "未知錯誤");
-                        document.getElementById("error").textContent = errorMessage;
-                        console.error("submitForm() 寫入失敗:", errorMessage, data);
+                        errorEl.textContent = "❌ 寫入失敗：" + data.message;
                     }
                 })
                 .catch(err => {
-                    const errorMessage = "❌ 發送失敗：" + err.message;
-                    document.getElementById("error").textContent = errorMessage;
-                    console.error("submitForm() 錯誤:", err);
+                    errorEl.textContent = "❌ 傳送錯誤：" + err;
                 });
         }
 
-        window.onload = () => {
-            console.log("window.onload 被呼叫");
-            if (window.isSecureContext) {
-                loadStaffList();
-                Html5Qrcode.getCameras().then(devices => {
-                    availableCameras = devices;
-                    if (devices && devices.length) {
-                         startScanner(); // Start the scanner after camera selection
-                    }
-                    else{
-                       document.getElementById("error").textContent = "❌ 無法存取相機，請檢查您的裝置或瀏覽器設定。";
-                       console.error("無法取得相機裝置：");
-                    }
+        // 新增一個函式來呼叫 Google Apps Script 以查詢地點
+        async function getLocation(itemCode) {
+            const scriptUrl = `https://script.google.com/macros/s/YOUR_SCRIPT_ID/exec?action=getLocation&itemCode=${encodeURIComponent(itemCode)}`; // 修正URL
+            const response = await fetch(scriptUrl);
+            const data = await response.json();
+            return data; // 假設 Google Apps Script 返回的 JSON 物件中有一個 "location" 屬性
+        }
 
-                }).catch(err => {
-                    const errorMessage = "❌ 無法存取相機，請允許瀏覽器權限：" + err.message;
-                    document.getElementById("error").textContent = errorMessage;
-                    console.error("window.onload 無法取得相機裝置：", err);
-                });
-            } else {
-                const errorMessage = "❌ 請使用 HTTPS 開啟本頁";
-                document.getElementById("error").textContent = errorMessage;
-                console.error("window.onload insecure context");
+        // Initialize on page load
+        window.onload = async () => {
+            console.log("window.onload 被呼叫");
+            if (!isSecureContext) return;
+            try{
+              await Promise.all([
+                  loadStaffList(),
+                  selectBackCamera()
+              ]);
+            }catch(e){
+               console.error("Error during initialisation",e);
+               errorEl.textContent = "❌ 初始化失敗，請檢查網路連線或稍後重試";
+               return;
+            }
+
+            if (selectedCameraId) {
+                setTimeout(startScanner, 1000); // Delay 1 second for iOS compatibility
             }
         };
     </script>
