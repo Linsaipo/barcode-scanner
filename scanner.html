@@ -33,7 +33,7 @@
     <input type="text" id="itemName" readonly><br><br>
     <label for="description">描述：</label>
     <input type="text" id="description" readonly><br><br>
-    <label for="location">地點：</label>
+    <label for="location">目前位置：</label>
     <input type="text" id="location"><br><br>
     <label for="to">移至：</label>
     <input type="text" id="to"><br><br>
@@ -83,8 +83,8 @@
             const devices = await Html5Qrcode.getCameras();
             if (!devices.length) throw new Error("找不到攝影機");
             selectedCameraId =
-                devices.find(d => d.label.toLowerCase().includes("back"))?.id ||
                 devices.find(d => d.label.toLowerCase().includes("environment"))?.id ||
+                devices.find(d => d.label.toLowerCase().includes("back"))?.id ||
                 devices[devices.length - 1].id;
 
             html5QrCode = new Html5Qrcode("reader");
@@ -160,6 +160,7 @@
     window.onload = () => {
         if (window.isSecureContext) {
             loadStaffList();
+            setTimeout(startScanner, 500); // 自動啟動相機（延遲 0.5 秒）
         } else {
             document.getElementById("error").textContent = "❌ 請使用 HTTPS 開啟本頁";
         }
