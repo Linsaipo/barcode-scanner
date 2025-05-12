@@ -23,15 +23,18 @@
     const selected = document.getElementById("cameraSelect").value;
     if (selected && selected !== selectedCameraId) {
         selectedCameraId = selected;
-        stopScanner();
+    localStorage.setItem("preferredCameraId", selected);
+    stopScanner();
         setTimeout(startScanner, 300);
     }
 }
 </script>
 </head>
 <body>
-    <label for="cameraSelect">選擇鏡頭：</label>
-<select id="cameraSelect" onchange="switchCamera()"></select><br><br>
+    <div style="max-width:600px;margin:0 auto 20px auto;text-align:center;">
+    <label for="cameraSelect" style="font-weight:bold;">🎥 選擇鏡頭：</label><br>
+    <select id="cameraSelect" onchange="switchCamera()" style="padding:6px;width:90%;max-width:300px;"></select>
+</div>
 <div id="reader"></div>
     <div id="success" style="color:green; font-weight: bold;"></div>
     <div id="error" style="color:red; font-weight: bold;"></div>
@@ -178,11 +181,23 @@ cameraSelect.value = selectedCameraId;
                 availableCameras = devices;
                 const cameraSelect = document.getElementById("cameraSelect");
                 cameraSelect.innerHTML = devices.map((d, i) => `<option value="${d.id}">${d.label || `鏡頭 ${i+1}`}</option>`).join("");
-                selectedCameraId = devices.find(d => d.label.toLowerCase().includes("environment"))?.id ||
-                                  devices.find(d => d.label.toLowerCase().includes("back"))?.id ||
-                                  devices[0].id;
+
+                const savedCameraId = localStorage.getItem("preferredCameraId");
+                const defaultCamera = devices.find(d => d.id === savedCameraId) ||
+                                     devices.find(d => d.label.toLowerCase().includes("environment")) ||
+                                     devices.find(d => d.label.toLowerCase().includes("back")) ||
+                                     devices[0];
+                selectedCameraId = defaultCamera?.id;
                 cameraSelect.value = selectedCameraId;
                 setTimeout(startScanner, 500);
+            }).catch(err => {
+                document.getElementById("error").textContent = "❌ 無法存取相機，請允許瀏覽器權限";
+                console.error("無法取得相機裝置：", err);
+            });
+        } else {
+            document.getElementById("error").textContent = "❌ 請使用 HTTPS 開啟本頁";
+        }
+    };
             });
         } else {
             document.getElementById("error").textContent = "❌ 請使用 HTTPS 開啟本頁";
