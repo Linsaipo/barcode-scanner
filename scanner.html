@@ -19,10 +19,20 @@
             100% { opacity: 0.5; }
         }
     </style>
-    <script src="https://unpkg.com/html5-qrcode@2.3.4/html5-qrcode.min.js"></script>
+    <script src="https://unpkg.com/html5-qrcode@2.3.4/html5-qrcode.min.js">function switchCamera() {
+    const selected = document.getElementById("cameraSelect").value;
+    if (selected && selected !== selectedCameraId) {
+        selectedCameraId = selected;
+        stopScanner();
+        setTimeout(startScanner, 300);
+    }
+}
+</script>
 </head>
 <body>
-    <div id="reader"></div>
+    <label for="cameraSelect">選擇鏡頭：</label>
+<select id="cameraSelect" onchange="switchCamera()"></select><br><br>
+<div id="reader"></div>
     <div id="success" style="color:green; font-weight: bold;"></div>
     <div id="error" style="color:red; font-weight: bold;"></div>
     <label for="staff">員工：</label>
@@ -48,6 +58,7 @@
     <script>
     const API_BASE = "https://script.google.com/macros/s/AKfycbyzJ8aZwDPJ_Ii-p8Rv1HykheqocnnbsqNP6Ebtz2TJvlI8vv_IYF1qBLWRqgY8vs-s/exec";
     let html5QrCode;
+let availableCameras = [];
     let selectedCameraId;
 
     async function loadStaffList() {
@@ -82,10 +93,13 @@
         try {
             const devices = await Html5Qrcode.getCameras();
             if (!devices.length) throw new Error("找不到攝影機");
-            selectedCameraId =
-                devices.find(d => d.label.toLowerCase().includes("environment"))?.id ||
-                devices.find(d => d.label.toLowerCase().includes("back"))?.id ||
-                devices[devices.length - 1].id;
+            availableCameras = devices;
+const cameraSelect = document.getElementById("cameraSelect");
+cameraSelect.innerHTML = devices.map((d, i) => `<option value="${d.id}">${d.label || `鏡頭 ${i+1}`}</option>`).join("");
+selectedCameraId = devices.find(d => d.label.toLowerCase().includes("environment"))?.id ||
+                  devices.find(d => d.label.toLowerCase().includes("back"))?.id ||
+                  devices[0].id;
+cameraSelect.value = selectedCameraId;
 
             html5QrCode = new Html5Qrcode("reader");
             await html5QrCode.start(
@@ -160,7 +174,20 @@
     window.onload = () => {
         if (window.isSecureContext) {
             loadStaffList();
-            setTimeout(startScanner, 500); // 自動啟動相機（延遲 0.5 秒）
+            Html5Qrcode.getCameras().then(devices => {
+                availableCameras = devices;
+                const cameraSelect = document.getElementById("cameraSelect");
+                cameraSelect.innerHTML = devices.map((d, i) => `<option value="${d.id}">${d.label || `鏡頭 ${i+1}`}</option>`).join("");
+                selectedCameraId = devices.find(d => d.label.toLowerCase().includes("environment"))?.id ||
+                                  devices.find(d => d.label.toLowerCase().includes("back"))?.id ||
+                                  devices[0].id;
+                cameraSelect.value = selectedCameraId;
+                setTimeout(startScanner, 500);
+            });
+        } else {
+            document.getElementById("error").textContent = "❌ 請使用 HTTPS 開啟本頁";
+        }
+    }; // 自動啟動相機（延遲 0.5 秒）
         } else {
             document.getElementById("error").textContent = "❌ 請使用 HTTPS 開啟本頁";
         }
