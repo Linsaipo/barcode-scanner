@@ -68,7 +68,9 @@
 
     async function getItemData(itemCode) {
         const response = await fetch(`${API_BASE}?action=getLocation&itemCode=${encodeURIComponent(itemCode)}`);
-        return await response.json();
+        const data = await response.json();
+        console.log("取得資料：", data);
+        return data;
     }
 
     async function startScanner() {
@@ -80,7 +82,10 @@
         try {
             const devices = await Html5Qrcode.getCameras();
             if (!devices.length) throw new Error("找不到攝影機");
-            selectedCameraId = devices.find(d => d.label.toLowerCase().includes("back"))?.id || devices[0].id;
+            selectedCameraId =
+                devices.find(d => d.label.toLowerCase().includes("back"))?.id ||
+                devices.find(d => d.label.toLowerCase().includes("environment"))?.id ||
+                devices[devices.length - 1].id;
 
             html5QrCode = new Html5Qrcode("reader");
             await html5QrCode.start(
