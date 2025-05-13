@@ -19,10 +19,21 @@
             100% { opacity: 0.5; }
         }
     </style>
-    <script src="https://unpkg.com/html5-qrcode@2.3.4/html5-qrcode.min.js"></script>
+    <script src="https://unpkg.com/html5-qrcode@2.3.4/html5-qrcode.min.js">function switchCamera() {
+    const selected = document.getElementById("cameraSelect").value;
+    if (selected && selected !== selectedCameraId) {
+        selectedCameraId = selected;
+        localStorage.setItem("preferredCameraId", selected);
+        stopScanner();
+        setTimeout(startScanner, 300);
+    }
+}
+</script>
 </head>
 <body>
-    <div id="reader"></div>
+    <label for="cameraSelect"><strong>🎥 選擇鏡頭：</strong></label><br>
+<select id="cameraSelect" onchange="switchCamera()" style="padding: 6px; max-width: 300px; width: 90%; margin: 10px 0;"></select>
+<div id="reader"></div>
     <div id="success" style="color:green; font-weight: bold;"></div>
     <div id="error" style="color:red; font-weight: bold;"></div>
 
@@ -49,6 +60,7 @@
     const API_BASE = "https://script.google.com/macros/s/AKfycbyzJ8aZwDPJ_Ii-p8Rv1HykheqocnnbsqNP6Ebtz2TJvlI8vv_IYF1qBLWRqgY8vs-s/exec";
     let html5QrCode;
     let selectedCameraId;
+let availableCameras = [];
 
     async function loadStaffList() {
         try {
@@ -153,7 +165,27 @@
     window.onload = () => {
         if (window.isSecureContext) {
             loadStaffList();
-            startScanner();
+            Html5Qrcode.getCameras().then(devices => {
+                availableCameras = devices;
+                const cameraSelect = document.getElementById("cameraSelect");
+                cameraSelect.innerHTML = devices.map((d, i) => `<option value="${d.id}">${d.label || `鏡頭 ${i+1}`}</option>`).join("");
+
+                const savedCameraId = localStorage.getItem("preferredCameraId");
+                const defaultCamera = devices.find(d => d.id === savedCameraId) ||
+                                     devices.find(d => d.label.toLowerCase().includes("environment")) ||
+                                     devices.find(d => d.label.toLowerCase().includes("back")) ||
+                                     devices[0];
+                selectedCameraId = defaultCamera?.id;
+                cameraSelect.value = selectedCameraId;
+                startScanner();
+            }).catch(err => {
+                document.getElementById("error").textContent = "❌ 無法取得相機清單";
+                console.error("getCameras error:", err);
+            });
+        } else {
+            document.getElementById("error").textContent = "❌ 請使用 HTTPS 開啟本頁";
+        }
+    };
         } else {
             document.getElementById("error").textContent = "❌ 請使用 HTTPS 開啟本頁";
         }
