@@ -1,221 +1,201 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>條碼掃描測試</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <style>
-        #reader {
-            width: 100%;
-            max-width: 600px;
-            margin: 20px auto;
-        }
-        .loading {
-            background-color: #f0f0f0;
-            animation: pulse 2s infinite;
-        }
-        @keyframes pulse {
-            0% { opacity: 0.5; }
-            50% { opacity: 1; }
-            100% { opacity: 0.5; }
-        }
-    </style>
-    <script src="https://unpkg.com/html5-qrcode@2.3.4/html5-qrcode.min.js">function switchCamera() {
-    const selected = document.getElementById("cameraSelect").value;
-    if (selected && selected !== selectedCameraId) {
-        selectedCameraId = selected;
-        localStorage.setItem("preferredCameraId", selected);
-        stopScanner();
-        setTimeout(startScanner, 300);
+  <meta charset="UTF-8" />
+  <title>條碼掃描測試</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <script src="https://unpkg.com/html5-qrcode@2.3.4/html5-qrcode.min.js"></script>
+  <style>
+    #reader {
+      width: 100%;
+      max-width: 600px;
+      margin: 20px auto;
     }
-}
-</script>
+    .loading {
+      background-color: #f0f0f0;
+      animation: pulse 2s infinite;
+    }
+    @keyframes pulse {
+      0% { opacity: 0.5; }
+      50% { opacity: 1; }
+      100% { opacity: 0.5; }
+    }
+  </style>
 </head>
 <body>
-    <label for="cameraSelect"><strong>🎥 選擇鏡頭：</strong></label><br>
-<select id="cameraSelect" onchange="switchCamera()" style="padding: 6px; max-width: 300px; width: 90%; margin: 10px 0;"></select>
-<div id="reader"></div>
-    <div id="success" style="color:green; font-weight: bold;"></div>
-    <div id="error" style="color:red; font-weight: bold;"></div>
+  <label for="cameraSelect"><strong>🎥 選擇鏡頭：</strong></label><br>
+  <select id="cameraSelect" onchange="switchCamera()" style="padding: 6px; max-width: 300px; width: 90%; margin: 10px 0;"></select>
+  <div id="reader"></div>
+  <div id="success" style="color:green; font-weight: bold;"></div>
+  <div id="error" style="color:red; font-weight: bold;"></div>
 
-    <label for="staff">員工：</label>
-    <select id="staff"></select><br><br>
-    <label for="item">財產編號：</label>
-    <input type="text" id="item" readonly><br><br>
-    <label for="itemName">品項名：</label>
-    <input type="text" id="itemName" readonly><br><br>
-    <label for="description">描述：</label>
-    <input type="text" id="description" readonly><br><br>
-    <label for="location">目前位置：</label>
-    <input type="text" id="location"><br><br>
-    <label for="to">移至：</label>
-    <input type="text" id="to"><br><br>
-    <label for="note">備註：</label>
-    <input type="text" id="note"><br><br>
+  <label for="staff">員工：</label>
+  <select id="staff"></select><br><br>
+  <label for="item">財產編號：</label>
+  <input type="text" id="item" readonly><br><br>
+  <label for="itemName">品項名：</label>
+  <input type="text" id="itemName" readonly><br><br>
+  <label for="description">描述：</label>
+  <input type="text" id="description" readonly><br><br>
+  <label for="location">目前位置：</label>
+  <input type="text" id="location"><br><br>
+  <label for="to">移至：</label>
+  <input type="text" id="to"><br><br>
+  <label for="note">備註：</label>
+  <input type="text" id="note"><br><br>
 
-    <button id="startButton" onclick="startScanner()">開始掃描</button>
-    <button id="stopButton" onclick="stopScanner()" style="display:none;">停止掃描</button>
-    <button onclick="submitForm()">送出</button>
+  <button id="startButton" onclick="startScanner()">開始掃描</button>
+  <button id="stopButton" onclick="stopScanner()" style="display:none;">停止掃描</button>
+  <button onclick="submitForm()">送出</button>
 
-    <script>
+  <script>
     const API_BASE = "https://script.google.com/macros/s/AKfycbyzJ8aZwDPJ_Ii-p8Rv1HykheqocnnbsqNP6Ebtz2TJvlI8vv_IYF1qBLWRqgY8vs-s/exec";
     let html5QrCode;
     let selectedCameraId;
-let availableCameras = [];
+    let availableCameras = [];
 
     async function loadStaffList() {
-        try {
-            const response = await fetch(`${API_BASE}?action=getStaffList`);
-            const data = await response.json();
-            if (Array.isArray(data)) {
-                const staffSelect = document.getElementById("staff");
-                staffSelect.innerHTML = '<option value="">請選擇</option>' +
-                  data.map(name => `<option value="${name}">${name}</option>`).join("");
-            } else {
-                document.getElementById("error").textContent = "❌ 員工清單載入錯誤";
-                console.error("getStaffList response:", data);
-            }
-        } catch (err) {
-            document.getElementById("error").textContent = "❌ 無法取得員工清單";
-            console.error(err);
+      try {
+        const res = await fetch(`${API_BASE}?action=getStaffList`);
+        const data = await res.json();
+        if (Array.isArray(data)) {
+          document.getElementById("staff").innerHTML = '<option value="">請選擇</option>' +
+            data.map(name => `<option value="${name}">${name}</option>`).join("");
+        } else {
+          document.getElementById("error").textContent = "❌ 員工清單載入失敗";
+          console.warn("員工清單 API 回傳：", data);
         }
+      } catch (err) {
+        document.getElementById("error").textContent = "❌ 載入員工清單錯誤";
+        console.error(err);
+      }
     }
 
-    async function getItemData(itemCode) {
-        const res = await fetch(`${API_BASE}?action=getLocation&itemCode=${encodeURIComponent(itemCode)}`);
-        const data = await res.json();
-        return data;
+    async function loadCameraList() {
+      try {
+        const devices = await Html5Qrcode.getCameras();
+        availableCameras = devices;
+        const cameraSelect = document.getElementById("cameraSelect");
+        if (!devices.length) throw new Error("找不到相機裝置");
+        cameraSelect.innerHTML = devices.map((d, i) => `<option value="${d.id}">${d.label || `鏡頭${i+1}`}</option>`).join("");
+
+        const saved = localStorage.getItem("preferredCameraId");
+        const fallback = devices.find(d => d.id === saved) ||
+                         devices.find(d => d.label.toLowerCase().includes("environment")) ||
+                         devices.find(d => d.label.toLowerCase().includes("back")) ||
+                         devices[0];
+
+        selectedCameraId = fallback.id;
+        cameraSelect.value = selectedCameraId;
+        startScanner();
+      } catch (err) {
+        document.getElementById("error").textContent = `❌ 相機錯誤：${err.message}`;
+        console.error("camera list error:", err);
+      }
     }
 
     async function startScanner() {
-    const readerEl = document.getElementById("reader");
-    readerEl.classList.add("loading");
+      const readerEl = document.getElementById("reader");
+      readerEl.classList.add("loading");
 
-    try {
-        if (!selectedCameraId) {
-            throw new Error("尚未選擇相機");
+      try {
+        if (!selectedCameraId) throw new Error("未選擇相機");
+        if (html5QrCode?.getState && html5QrCode.getState() === 2) {
+          await html5QrCode.stop();
+          document.getElementById("reader").innerHTML = "";
         }
-
-        if (html5QrCode?.getState && html5QrCode.getState() === 2) { // 已啟動
-            await html5QrCode.stop();
-            document.getElementById("reader").innerHTML = "";
-        }
-
         html5QrCode = new Html5Qrcode("reader");
         await html5QrCode.start(
-            { deviceId: { exact: selectedCameraId } },
-            { fps: 10, qrbox: { width: 250, height: 250 } },
-            async decodedText => {
-                document.getElementById("item").value = decodedText;
-                const data = await getItemData(decodedText);
-                document.getElementById("itemName").value = data.item || "";
-                document.getElementById("description").value = data.desc || "";
-                document.getElementById("location").value = data.location || "";
-                document.getElementById("success").textContent = "✅ 掃描成功";
-                stopScanner();
-            },
-            errorMessage => {
-                console.log("掃描錯誤:", errorMessage);
-            }
+          { deviceId: { exact: selectedCameraId } },
+          { fps: 10, qrbox: { width: 250, height: 250 } },
+          async text => {
+            document.getElementById("item").value = text;
+            const data = await getItemData(text);
+            document.getElementById("itemName").value = data.item || "";
+            document.getElementById("description").value = data.desc || "";
+            document.getElementById("location").value = data.location || "";
+            document.getElementById("success").textContent = "✅ 掃描成功";
+            stopScanner();
+          },
+          err => console.log("掃描錯誤：", err)
         );
         document.getElementById("stopButton").style.display = "inline-block";
-    } catch (err) {
+      } catch (err) {
         document.getElementById("error").textContent = `❌ 相機啟動失敗：${err.message}`;
         console.error("startScanner error:", err);
-    } finally {
+      } finally {
         readerEl.classList.remove("loading");
-    }
-} },
-                async decodedText => {
-                    document.getElementById("item").value = decodedText;
-                    const data = await getItemData(decodedText);
-                    document.getElementById("itemName").value = data.item || "";
-                    document.getElementById("description").value = data.desc || "";
-                    document.getElementById("location").value = data.location || "";
-                    document.getElementById("success").textContent = "✅ 掃描成功";
-                    stopScanner();
-                }
-            );
-            document.getElementById("stopButton").style.display = "inline-block";
-        } catch (err) {
-            document.getElementById("error").textContent = `❌ 相機啟動失敗：${err.message}`;
-            console.error("startScanner error:", err);
-        } finally {
-            readerEl.classList.remove("loading");
-        }
+      }
     }
 
     function stopScanner() {
-        if (html5QrCode) {
-            html5QrCode.stop().then(() => {
-                document.getElementById("reader").innerHTML = "";
-                document.getElementById("stopButton").style.display = "none";
-            });
-        }
+      if (html5QrCode) {
+        html5QrCode.stop().then(() => {
+          document.getElementById("reader").innerHTML = "";
+          document.getElementById("stopButton").style.display = "none";
+        });
+      }
+    }
+
+    function switchCamera() {
+      const val = document.getElementById("cameraSelect").value;
+      selectedCameraId = val;
+      localStorage.setItem("preferredCameraId", val);
+      stopScanner();
+      setTimeout(startScanner, 300);
+    }
+
+    async function getItemData(code) {
+      try {
+        const res = await fetch(`${API_BASE}?action=getLocation&itemCode=${encodeURIComponent(code)}`);
+        return await res.json();
+      } catch (e) {
+        console.error("getItemData error:", e);
+        return {};
+      }
     }
 
     function submitForm() {
-        const staff = document.getElementById("staff").value.trim();
-        const item = document.getElementById("item").value.trim();
-        const location = document.getElementById("location").value.trim();
-        const to = document.getElementById("to").value.trim();
-        const note = document.getElementById("note").value.trim();
-
-        if (!staff || !item) {
-            document.getElementById("error").textContent = "❌ 請選擇員工並掃描財產編號";
-            return;
+      const staff = document.getElementById("staff").value.trim();
+      const item = document.getElementById("item").value.trim();
+      const location = document.getElementById("location").value.trim();
+      const to = document.getElementById("to").value.trim();
+      const note = document.getElementById("note").value.trim();
+      if (!staff || !item) {
+        document.getElementById("error").textContent = "❌ 請選擇員工並掃描財產編號";
+        return;
+      }
+      fetch(API_BASE, {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: new URLSearchParams({
+          action: "submitForm",
+          staff, item, location, to, note
+        })
+      })
+      .then(res => res.json())
+      .then(data => {
+        if (data.result === "success") {
+          document.getElementById("success").textContent = "✅ 資料已寫入";
+          document.getElementById("error").textContent = "";
+        } else {
+          document.getElementById("error").textContent = "❌ 寫入失敗";
         }
-
-        fetch(API_BASE, {
-            method: "POST",
-            headers: { "Content-Type": "application/x-www-form-urlencoded" },
-            body: new URLSearchParams({
-                action: "submitForm",
-                staff, item, location, to, note
-            })
-        })
-        .then(res => res.json())
-        .then(data => {
-            if (data.result === "success") {
-                document.getElementById("success").textContent = "✅ 資料寫入成功";
-                document.getElementById("error").textContent = "";
-            } else {
-                document.getElementById("error").textContent = "❌ 寫入失敗";
-            }
-        })
-        .catch(err => {
-            document.getElementById("error").textContent = "❌ 發送失敗";
-            console.error("submitForm error:", err);
-        });
+      })
+      .catch(err => {
+        document.getElementById("error").textContent = "❌ 發送失敗";
+        console.error(err);
+      });
     }
 
     window.onload = () => {
-        if (window.isSecureContext) {
-            loadStaffList();
-            Html5Qrcode.getCameras().then(devices => {
-                availableCameras = devices;
-                const cameraSelect = document.getElementById("cameraSelect");
-                cameraSelect.innerHTML = devices.map((d, i) => `<option value="${d.id}">${d.label || `鏡頭 ${i+1}`}</option>`).join("");
-
-                const savedCameraId = localStorage.getItem("preferredCameraId");
-                const defaultCamera = devices.find(d => d.id === savedCameraId) ||
-                                     devices.find(d => d.label.toLowerCase().includes("environment")) ||
-                                     devices.find(d => d.label.toLowerCase().includes("back")) ||
-                                     devices[0];
-                selectedCameraId = defaultCamera?.id;
-                cameraSelect.value = selectedCameraId;
-                startScanner();
-            }).catch(err => {
-                document.getElementById("error").textContent = "❌ 無法取得相機清單";
-                console.error("getCameras error:", err);
-            });
-        } else {
-            document.getElementById("error").textContent = "❌ 請使用 HTTPS 開啟本頁";
-        }
+      if (!window.isSecureContext) {
+        document.getElementById("error").textContent = "❌ 請使用 HTTPS 開啟本頁";
+        return;
+      }
+      loadStaffList();
+      loadCameraList();
     };
-        } else {
-            document.getElementById("error").textContent = "❌ 請使用 HTTPS 開啟本頁";
-        }
-    };
-    </script>
+  </script>
 </body>
 </html>
