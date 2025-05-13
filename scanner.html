@@ -87,18 +87,44 @@ let availableCameras = [];
     }
 
     async function startScanner() {
-        const readerEl = document.getElementById("reader");
-        readerEl.classList.add("loading");
-        try {
-            const cameras = await Html5Qrcode.getCameras();
-            if (!cameras.length) throw new Error("找不到相機");
-            selectedCameraId = cameras.find(c => c.label.toLowerCase().includes("environment"))?.id ||
-                              cameras.find(c => c.label.toLowerCase().includes("back"))?.id ||
-                              cameras[cameras.length - 1].id;
-            html5QrCode = new Html5Qrcode("reader");
-            await html5QrCode.start(
-                selectedCameraId,
-                { fps: 10, qrbox: { width: 250, height: 250 } },
+    const readerEl = document.getElementById("reader");
+    readerEl.classList.add("loading");
+
+    try {
+        if (!selectedCameraId) {
+            throw new Error("尚未選擇相機");
+        }
+
+        if (html5QrCode?.getState && html5QrCode.getState() === 2) { // 已啟動
+            await html5QrCode.stop();
+            document.getElementById("reader").innerHTML = "";
+        }
+
+        html5QrCode = new Html5Qrcode("reader");
+        await html5QrCode.start(
+            { deviceId: { exact: selectedCameraId } },
+            { fps: 10, qrbox: { width: 250, height: 250 } },
+            async decodedText => {
+                document.getElementById("item").value = decodedText;
+                const data = await getItemData(decodedText);
+                document.getElementById("itemName").value = data.item || "";
+                document.getElementById("description").value = data.desc || "";
+                document.getElementById("location").value = data.location || "";
+                document.getElementById("success").textContent = "✅ 掃描成功";
+                stopScanner();
+            },
+            errorMessage => {
+                console.log("掃描錯誤:", errorMessage);
+            }
+        );
+        document.getElementById("stopButton").style.display = "inline-block";
+    } catch (err) {
+        document.getElementById("error").textContent = `❌ 相機啟動失敗：${err.message}`;
+        console.error("startScanner error:", err);
+    } finally {
+        readerEl.classList.remove("loading");
+    }
+} },
                 async decodedText => {
                     document.getElementById("item").value = decodedText;
                     const data = await getItemData(decodedText);
