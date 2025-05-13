@@ -4,7 +4,23 @@
   <meta charset="UTF-8" />
   <title>條碼掃描測試</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <script src="https://unpkg.com/html5-qrcode@2.3.4/html5-qrcode.min.js"></script>
+  <script src="https://unpkg.com/html5-qrcode@2.3.4/html5-qrcode.min.js">async function loadWarehouseList() {
+  try {
+    const response = await fetch(`${API_BASE}?action=getWarehouseList`);
+    const data = await response.json();
+    const toSelect = document.getElementById("to");
+    if (Array.isArray(data)) {
+      toSelect.innerHTML = '<option value="">請選擇</option>' +
+        data.map(name => `<option value="${name}">${name}</option>`).join("");
+    } else {
+      toSelect.innerHTML = '<option value="">讀取錯誤</option>';
+    }
+  } catch (err) {
+    console.error("loadWarehouseList error:", err);
+    document.getElementById("to").innerHTML = '<option value="">錯誤</option>';
+  }
+}
+</script>
   <style>
     #reader {
       width: 100%;
@@ -33,14 +49,14 @@
   <select id="staff"></select><br><br>
   <label for="item">財產編號：</label>
   <input type="text" id="item" readonly><br><br>
-  <label for="itemName">財產名稱：</label>
+  <label for="itemName">品項名：</label>
   <input type="text" id="itemName" readonly><br><br>
   <label for="description">描述：</label>
   <input type="text" id="description" readonly><br><br>
   <label for="location">目前位置：</label>
   <input type="text" id="location"><br><br>
   <label for="to">移至：</label>
-  <input type="text" id="to"><br><br>
+<select id="to"><option value="">載入中...</option></select><br><br>
   <label for="note">備註：</label>
   <input type="text" id="note"><br><br>
 
@@ -49,7 +65,7 @@
   <button onclick="submitForm()">送出</button>
 
   <script>
-    const API_BASE = "https://script.google.com/macros/s/AKfycbwVZSKa4Jsjo71227rnV_l0iM8C8ZdOrNmfC9VTyf74NV5ERPuq2U3EkyVOpQ3ORJAymA/exec";
+    const API_BASE = "https://script.google.com/macros/s/AKfycbyzJ8aZwDPJ_Ii-p8Rv1HykheqocnnbsqNP6Ebtz2TJvlI8vv_IYF1qBLWRqgY8vs-s/exec";
     let html5QrCode;
     let selectedCameraId;
     let availableCameras = [];
@@ -111,8 +127,10 @@
           async text => {
             document.getElementById("item").value = text;
             const data = await getItemData(text);
-            document.getElementById("itemName").value = data.item || "";
-            document.getElementById("description").value = data.desc || "";
+const itemName = data.item || data.itemName || "";
+const description = data.desc || data.description || "";
+document.getElementById("itemName").value = itemName;
+document.getElementById("description").value = description;
             document.getElementById("location").value = data.location || "";
             document.getElementById("success").textContent = "✅ 掃描成功";
             stopScanner();
@@ -189,6 +207,7 @@
     }
 
     window.onload = () => {
+      loadWarehouseList();
       if (!window.isSecureContext) {
         document.getElementById("error").textContent = "❌ 請使用 HTTPS 開啟本頁";
         return;
