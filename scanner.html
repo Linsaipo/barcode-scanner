@@ -45,7 +45,7 @@
   <label for="location">目前位置：</label>
   <input type="text" id="location">
 
-  <label for="to">移至：</label>
+  <label for="to">移至位置：</label>
   <select id="to"><option value="">載入中...</option></select>
 
   <label for="note">備註：</label>
@@ -118,7 +118,6 @@
             document.getElementById("description").value = data.desc || "";
             document.getElementById("location").value = data.location || "";
             document.getElementById("success").textContent = "✅ 掃描成功";
-            
             stopScanner();
           },
           err => console.warn("掃描錯誤", err)
@@ -138,7 +137,7 @@
 
     function submitForm() {
       const staff = document.getElementById("staff").value.trim();
-      const item = document.getElementById("itemName").value.trim();
+      const item = document.getElementById("itemName").value.trim(); // 使用財產名稱
       const location = document.getElementById("location").value.trim();
       const to = document.getElementById("to").value.trim();
       const note = document.getElementById("note").value.trim();
@@ -157,19 +156,20 @@
         .then(res => res.json())
         .then(data => {
           if (data.result === "success") {
-          document.getElementById("success").textContent = "✅ 寫入成功";
-          document.getElementById("error").textContent = "";
-          // 清空欄位
-          document.getElementById("item").value = "";
-          document.getElementById("itemName").value = "";
-          document.getElementById("description").value = "";
-          document.getElementById("location").value = "";
-          document.getElementById("to").value = "";
-          document.getElementById("note").value = "";
-          document.getElementById("staff").value = "";
-          // 重新啟動相機
-          setTimeout(() => startScanner(), 500);
-        }
+            document.getElementById("success").textContent = "✅ 寫入成功";
+            document.getElementById("error").textContent = "";
+
+            // 清空欄位
+            document.getElementById("item").value = "";
+            document.getElementById("itemName").value = "";
+            document.getElementById("description").value = "";
+            document.getElementById("location").value = "";
+            document.getElementById("to").value = "";
+            document.getElementById("note").value = "";
+            document.getElementById("staff").value = "";
+
+            // 自動重啟相機
+            setTimeout(() => startScanner(), 500);
           } else {
             document.getElementById("error").textContent = "❌ 寫入失敗：「" + data.message + "」";
           }
@@ -182,14 +182,13 @@
 
     window.onload = async () => {
       await loadCameraList();
-      startScanner();
-      await loadCameraList();
+      startScanner(); // 一載入即啟動相機
       await loadStaffList();
       await loadWarehouseList();
       document.getElementById("cameraSelect").addEventListener("change", async (e) => {
         selectedCameraId = e.target.value;
         stopScanner();
-        setTimeout(startScanner, 300); // 延遲以確保停止完成再開啟新鏡頭
+        setTimeout(startScanner, 300);
       });
     };
   </script>
