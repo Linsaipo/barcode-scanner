@@ -1,164 +1,128 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <meta charset="UTF-8" />
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>條碼掃描測試</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <script src="https://unpkg.com/html5-qrcode@2.3.4/html5-qrcode.min.js">async function loadWarehouseList() {
-  try {
-    const response = await fetch(`${API_BASE}?action=getWarehouseList`);
-    const data = await response.json();
-    const toSelect = document.getElementById("to");
-    if (Array.isArray(data)) {
-      toSelect.innerHTML = '<option value="">請選擇</option>' +
-        data.map(name => `<option value="${name}">${name}</option>`).join("");
-    } else {
-      toSelect.innerHTML = '<option value="">讀取錯誤</option>';
-    }
-  } catch (err) {
-    console.error("loadWarehouseList error:", err);
-    document.getElementById("to").innerHTML = '<option value="">錯誤</option>';
-  }
-}
-async function loadWarehouseList() {
-  try {
-    const response = await fetch(`${API_BASE}?action=getWarehouseList`);
-    const data = await response.json();
-    const toSelect = document.getElementById("to");
-    if (Array.isArray(data)) {
-      toSelect.innerHTML = '<option value="">請選擇</option>' +
-        data.map(name => `<option value="${name}">${name}</option>`).join("");
-    } else {
-      toSelect.innerHTML = '<option value="">讀取錯誤</option>';
-    }
-  } catch (err) {
-    console.error("loadWarehouseList error:", err);
-    document.getElementById("to").innerHTML = '<option value="">錯誤</option>';
-  }
-}
-</script>
+  <script src="https://unpkg.com/html5-qrcode@2.3.4/html5-qrcode.min.js"></script>
   <style>
-    #reader {
+    body {
+      font-family: Arial, sans-serif;
+      padding: 20px;
+    }
+    label, select, input, button {
+      display: block;
+      margin-top: 10px;
       width: 100%;
-      max-width: 600px;
+      max-width: 400px;
+    }
+    #reader {
       margin: 20px auto;
-    }
-    .loading {
-      background-color: #f0f0f0;
-      animation: pulse 2s infinite;
-    }
-    @keyframes pulse {
-      0% { opacity: 0.5; }
-      50% { opacity: 1; }
-      100% { opacity: 0.5; }
+      max-width: 400px;
     }
   </style>
 </head>
 <body>
-  <label for="cameraSelect"><strong>🎥 選擇鏡頭：</strong></label><br>
-  <select id="cameraSelect" onchange="switchCamera()" style="padding: 6px; max-width: 300px; width: 90%; margin: 10px 0;"></select>
+  <label for="cameraSelect">🎥 選擇鏡頭：</label>
+  <select id="cameraSelect"></select>
+
   <div id="reader"></div>
-  <div id="success" style="color:green; font-weight: bold;"></div>
-  <div id="error" style="color:red; font-weight: bold;"></div>
+  <div id="success" style="color:green; font-weight:bold;"></div>
+  <div id="error" style="color:red; font-weight:bold;"></div>
 
   <label for="staff">員工：</label>
-  <select id="staff"></select><br><br>
-  <label for="item">財產編號：</label>
-  <input type="text" id="item" readonly><br><br>
-  <label for="itemName">品項名：</label>
-  <input type="text" id="itemName" readonly><br><br>
-  <label for="description">描述：</label>
-  <input type="text" id="description" readonly><br><br>
-  <label for="location">目前位置：</label>
-  <input type="text" id="location"><br><br>
-  <label for="to">移至位置：</label>
-<select id="to"><option value="">載入中...</option></select><br><br>
-  <label for="note">備註：</label>
-  <input type="text" id="note"><br><br>
+  <select id="staff"></select>
 
-  <button id="startButton" onclick="startScanner()">開始掃描</button>
-  <button id="stopButton" onclick="stopScanner()" style="display:none;">停止掃描</button>
+  <label for="item">財產編號：</label>
+  <input type="text" id="item" readonly>
+
+  <label for="itemName">品項名：</label>
+  <input type="text" id="itemName" readonly>
+
+  <label for="description">描述：</label>
+  <input type="text" id="description" readonly>
+
+  <label for="location">目前位置：</label>
+  <input type="text" id="location">
+
+  <label for="to">移至：</label>
+  <select id="to"><option value="">載入中...</option></select>
+
+  <label for="note">備註：</label>
+  <input type="text" id="note">
+
+  <button onclick="startScanner()">開始掃描</button>
+  <button onclick="stopScanner()">停止掃描</button>
   <button onclick="submitForm()">送出</button>
 
   <script>
     const API_BASE = "https://script.google.com/macros/s/AKfycbxteOvCugoU-Xr51Du-wtY4OYE_1hf7QeWtlM-qHpEoHLW5SdgpxvC8l1jnHUUsoqSz/exec";
     let html5QrCode;
-    let selectedCameraId;
-    let availableCameras = [];
+    let selectedCameraId = null;
 
     async function loadStaffList() {
       try {
         const res = await fetch(`${API_BASE}?action=getStaffList`);
         const data = await res.json();
+        const staffSelect = document.getElementById("staff");
+        staffSelect.innerHTML = '<option value="">請選擇</option>' +
+          data.map(name => `<option value="${name}">${name}</option>`).join("");
+      } catch (err) {
+        console.error("載入員工失敗", err);
+      }
+    }
+
+    async function loadWarehouseList() {
+      try {
+        const res = await fetch(`${API_BASE}?action=getWarehouseList`);
+        const data = await res.json();
+        const toSelect = document.getElementById("to");
         if (Array.isArray(data)) {
-          document.getElementById("staff").innerHTML = '<option value="">請選擇</option>' +
+          toSelect.innerHTML = '<option value="">請選擇</option>' +
             data.map(name => `<option value="${name}">${name}</option>`).join("");
         } else {
-          document.getElementById("error").textContent = "❌ 員工清單載入失敗";
-          console.warn("員工清單 API 回傳：", data);
+          toSelect.innerHTML = '<option value="">讀取錯誤</option>';
         }
       } catch (err) {
-        document.getElementById("error").textContent = "❌ 載入員工清單錯誤";
-        console.error(err);
+        console.error("載入倉庫失敗", err);
+        document.getElementById("to").innerHTML = '<option value="">錯誤</option>';
       }
     }
 
     async function loadCameraList() {
       try {
         const devices = await Html5Qrcode.getCameras();
-        availableCameras = devices;
         const cameraSelect = document.getElementById("cameraSelect");
-        if (!devices.length) throw new Error("找不到相機裝置");
-        cameraSelect.innerHTML = devices.map((d, i) => `<option value="${d.id}">${d.label || `鏡頭${i+1}`}</option>`).join("");
-
-        const saved = localStorage.getItem("preferredCameraId");
-        const fallback = devices.find(d => d.id === saved) ||
-                         devices.find(d => d.label.toLowerCase().includes("environment")) ||
-                         devices.find(d => d.label.toLowerCase().includes("back")) ||
-                         devices[0];
-
-        selectedCameraId = fallback.id;
+        if (devices.length === 0) throw new Error("找不到相機");
+        cameraSelect.innerHTML = devices.map(d => `<option value="${d.id}">${d.label || "未命名鏡頭"}</option>`).join("");
+        selectedCameraId = devices[0].id;
         cameraSelect.value = selectedCameraId;
-        startScanner();
       } catch (err) {
-        document.getElementById("error").textContent = `❌ 相機錯誤：${err.message}`;
-        console.error("camera list error:", err);
+        console.error("相機載入失敗", err);
       }
     }
 
     async function startScanner() {
-      const readerEl = document.getElementById("reader");
-      readerEl.classList.add("loading");
-
+      if (!selectedCameraId) return;
+      html5QrCode = new Html5Qrcode("reader");
       try {
-        if (!selectedCameraId) throw new Error("未選擇相機");
-        if (html5QrCode?.getState && html5QrCode.getState() === 2) {
-          await html5QrCode.stop();
-          document.getElementById("reader").innerHTML = "";
-        }
-        html5QrCode = new Html5Qrcode("reader");
         await html5QrCode.start(
           { deviceId: { exact: selectedCameraId } },
-          { fps: 10, qrbox: { width: 250, height: 250 } },
+          { fps: 10, qrbox: 250 },
           async text => {
             document.getElementById("item").value = text;
-            const data = await getItemData(text);
-const itemName = data.item || data.itemName || "";
-const description = data.desc || data.description || "";
-document.getElementById("itemName").value = itemName;
-document.getElementById("description").value = description;
+            const res = await fetch(`${API_BASE}?action=getLocation&itemCode=${encodeURIComponent(text)}`);
+            const data = await res.json();
+            document.getElementById("itemName").value = data.item || "";
+            document.getElementById("description").value = data.desc || "";
             document.getElementById("location").value = data.location || "";
             document.getElementById("success").textContent = "✅ 掃描成功";
             stopScanner();
           },
-          err => console.log("掃描錯誤：", err)
+          err => console.warn("掃描錯誤", err)
         );
-        document.getElementById("stopButton").style.display = "inline-block";
       } catch (err) {
-        document.getElementById("error").textContent = `❌ 相機啟動失敗：${err.message}`;
-        console.error("startScanner error:", err);
-      } finally {
-        readerEl.classList.remove("loading");
+        console.error("掃描器啟動錯誤", err);
       }
     }
 
@@ -166,26 +130,7 @@ document.getElementById("description").value = description;
       if (html5QrCode) {
         html5QrCode.stop().then(() => {
           document.getElementById("reader").innerHTML = "";
-          document.getElementById("stopButton").style.display = "none";
         });
-      }
-    }
-
-    function switchCamera() {
-      const val = document.getElementById("cameraSelect").value;
-      selectedCameraId = val;
-      localStorage.setItem("preferredCameraId", val);
-      stopScanner();
-      setTimeout(startScanner, 300);
-    }
-
-    async function getItemData(code) {
-      try {
-        const res = await fetch(`${API_BASE}?action=getLocation&itemCode=${encodeURIComponent(code)}`);
-        return await res.json();
-      } catch (e) {
-        console.error("getItemData error:", e);
-        return {};
       }
     }
 
@@ -207,29 +152,25 @@ document.getElementById("description").value = description;
           staff, item, location, to, note
         })
       })
-      .then(res => res.json())
-      .then(data => {
-        if (data.result === "success") {
-          document.getElementById("success").textContent = "✅ 資料已寫入";
-          document.getElementById("error").textContent = "";
-        } else {
-          document.getElementById("error").textContent = "❌ 寫入失敗";
-        }
-      })
-      .catch(err => {
-        document.getElementById("error").textContent = "❌ 發送失敗";
-        console.error(err);
-      });
+        .then(res => res.json())
+        .then(data => {
+          if (data.result === "success") {
+            document.getElementById("success").textContent = "✅ 寫入成功";
+            document.getElementById("error").textContent = "";
+          } else {
+            document.getElementById("error").textContent = "❌ 寫入失敗：「" + data.message + "」";
+          }
+        })
+        .catch(err => {
+          document.getElementById("error").textContent = "❌ 發送錯誤";
+          console.error(err);
+        });
     }
 
-    window.onload = () => {
-      loadWarehouseList();
-      if (!window.isSecureContext) {
-        document.getElementById("error").textContent = "❌ 請使用 HTTPS 開啟本頁";
-        return;
-      }
-      loadStaffList();
-      loadCameraList();
+    window.onload = async () => {
+      await loadCameraList();
+      await loadStaffList();
+      await loadWarehouseList();
     };
   </script>
 </body>
