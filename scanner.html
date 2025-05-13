@@ -20,6 +20,22 @@
     document.getElementById("to").innerHTML = '<option value="">錯誤</option>';
   }
 }
+async function loadWarehouseList() {
+  try {
+    const response = await fetch(`${API_BASE}?action=getWarehouseList`);
+    const data = await response.json();
+    const toSelect = document.getElementById("to");
+    if (Array.isArray(data)) {
+      toSelect.innerHTML = '<option value="">請選擇</option>' +
+        data.map(name => `<option value="${name}">${name}</option>`).join("");
+    } else {
+      toSelect.innerHTML = '<option value="">讀取錯誤</option>';
+    }
+  } catch (err) {
+    console.error("loadWarehouseList error:", err);
+    document.getElementById("to").innerHTML = '<option value="">錯誤</option>';
+  }
+}
 </script>
   <style>
     #reader {
