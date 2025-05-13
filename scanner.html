@@ -137,20 +137,23 @@
 
     function submitForm() {
       const staff = document.getElementById("staff").value.trim();
-      const item = document.getElementById("itemName").value.trim(); // 使用財產名稱
+      const itemCode = document.getElementById("item").value.trim();
+      const itemName = document.getElementById("itemName").value.trim();
       const location = document.getElementById("location").value.trim();
       const to = document.getElementById("to").value.trim();
       const note = document.getElementById("note").value.trim();
-      if (!staff || !item) {
-        document.getElementById("error").textContent = "❌ 請選擇員工並掃描財產編號";
+
+      if (!staff || !itemName || !itemCode) {
+        document.getElementById("error").textContent = "❌ 員工、財產名稱與財產編號為必填欄位";
         return;
       }
+
       fetch(API_BASE, {
         method: "POST",
         headers: { "Content-Type": "application/x-www-form-urlencoded" },
         body: new URLSearchParams({
           action: "submitForm",
-          staff, item, location, to, note
+          staff, item: itemName, itemCode, location, to, note
         })
       })
         .then(res => res.json())
@@ -159,7 +162,6 @@
             document.getElementById("success").textContent = "✅ 寫入成功";
             document.getElementById("error").textContent = "";
 
-            // 清空欄位
             document.getElementById("item").value = "";
             document.getElementById("itemName").value = "";
             document.getElementById("description").value = "";
@@ -168,7 +170,6 @@
             document.getElementById("note").value = "";
             document.getElementById("staff").value = "";
 
-            // 自動重啟相機
             setTimeout(() => startScanner(), 500);
           } else {
             document.getElementById("error").textContent = "❌ 寫入失敗：「" + data.message + "」";
@@ -182,7 +183,7 @@
 
     window.onload = async () => {
       await loadCameraList();
-      startScanner(); // 一載入即啟動相機
+      startScanner();
       await loadStaffList();
       await loadWarehouseList();
       document.getElementById("cameraSelect").addEventListener("change", async (e) => {
