@@ -45,7 +45,7 @@
   <label for="location">目前位置：</label>
   <input type="text" id="location">
 
-  <label for="to">移至：</label>
+  <label for="to">移至位置：</label>
   <select id="to"><option value="">載入中...</option></select>
 
   <label for="note">備註：</label>
@@ -95,7 +95,8 @@
         const cameraSelect = document.getElementById("cameraSelect");
         if (devices.length === 0) throw new Error("找不到相機");
         cameraSelect.innerHTML = devices.map(d => `<option value="${d.id}">${d.label || "未命名鏡頭"}</option>`).join("");
-        selectedCameraId = devices[0].id;
+        const rear = devices.find(d => /rear|後/i.test(d.label));
+        selectedCameraId = rear ? rear.id : devices[0].id;
         cameraSelect.value = selectedCameraId;
       } catch (err) {
         console.error("相機載入失敗", err);
@@ -171,6 +172,11 @@
       await loadCameraList();
       await loadStaffList();
       await loadWarehouseList();
+      document.getElementById("cameraSelect").addEventListener("change", async (e) => {
+        selectedCameraId = e.target.value;
+        stopScanner();
+        setTimeout(startScanner, 300); // 延遲以確保停止完成再開啟新鏡頭
+      });
     };
   </script>
 </body>
