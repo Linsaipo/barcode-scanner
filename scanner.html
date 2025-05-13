@@ -119,8 +119,12 @@
             document.getElementById("location").value = data.location || "";
             document.getElementById("success").textContent = "✅ 掃描成功";
             if (navigator.vibrate) navigator.vibrate(200);
-            const beep = new Audio("https://freesound.org/data/previews/522/522848_11602403-lq.mp3");
-            beep.play().catch(e => console.warn("音效播放失敗", e));
+            try {
+              const beep = new Audio("data:audio/mp3;base64,//uQxAAAAAAAAAAAAAAAAAAAAAAAWGluZwAAAA8AAAACAAACcQCA...省略...");
+              beep.play();
+            } catch (e) {
+              console.warn("音效播放失敗", e);
+            }
             stopScanner();
           },
           err => console.warn("掃描錯誤", err)
