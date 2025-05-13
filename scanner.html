@@ -118,6 +118,9 @@
             document.getElementById("description").value = data.desc || "";
             document.getElementById("location").value = data.location || "";
             document.getElementById("success").textContent = "✅ 掃描成功";
+            if (navigator.vibrate) navigator.vibrate(200);
+            const beep = new Audio("https://freesound.org/data/previews/522/522848_11602403-lq.mp3");
+            beep.play().catch(e => console.warn("音效播放失敗", e));
             stopScanner();
           },
           err => console.warn("掃描錯誤", err)
@@ -137,7 +140,7 @@
 
     function submitForm() {
       const staff = document.getElementById("staff").value.trim();
-      const item = document.getElementById("item").value.trim();
+      const item = document.getElementById("itemName").value.trim();
       const location = document.getElementById("location").value.trim();
       const to = document.getElementById("to").value.trim();
       const note = document.getElementById("note").value.trim();
@@ -156,8 +159,19 @@
         .then(res => res.json())
         .then(data => {
           if (data.result === "success") {
-            document.getElementById("success").textContent = "✅ 寫入成功";
-            document.getElementById("error").textContent = "";
+          document.getElementById("success").textContent = "✅ 寫入成功";
+          document.getElementById("error").textContent = "";
+          // 清空欄位
+          document.getElementById("item").value = "";
+          document.getElementById("itemName").value = "";
+          document.getElementById("description").value = "";
+          document.getElementById("location").value = "";
+          document.getElementById("to").value = "";
+          document.getElementById("note").value = "";
+          document.getElementById("staff").value = "";
+          // 重新啟動相機
+          setTimeout(() => startScanner(), 500);
+        }
           } else {
             document.getElementById("error").textContent = "❌ 寫入失敗：「" + data.message + "」";
           }
