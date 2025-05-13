@@ -45,7 +45,7 @@
   <label for="location">目前位置：</label>
   <input type="text" id="location">
 
-  <label for="to">移至位置：</label>
+  <label for="to">移至：</label>
   <select id="to"><option value="">載入中...</option></select>
 
   <label for="note">備註：</label>
@@ -169,6 +169,8 @@
     }
 
     window.onload = async () => {
+      await loadCameraList();
+      startScanner();
       await loadCameraList();
       await loadStaffList();
       await loadWarehouseList();
