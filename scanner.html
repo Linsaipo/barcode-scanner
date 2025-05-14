@@ -110,21 +110,25 @@
         await html5QrCode.start(
           { deviceId: { exact: selectedCameraId } },
           { fps: 10, qrbox: 250 },
-async text => {
-  document.getElementById("item").value = text;
+          async text => {
+            const cleanText = text.replace(/['"\s\uFEFF\xA0]/g, '').trim().toUpperCase();
+            document.getElementById("item").value = cleanText;
 
-  const res = await fetch(`${API_BASE}?action=getLocation&itemCode=${encodeURIComponent(text)}`);
-  const data = await res.json();
+            const res = await fetch(`${API_BASE}?action=getLocation&itemCode=${encodeURIComponent(cleanText)}`);
+            const data = await res.json();
+            console.log("取得資料：", data);
 
-  console.log("取得資料：", data);  // ← 這行會在瀏覽器 Console 顯示 API 回傳內容
+            if (data.item !== undefined) {
+              document.getElementById("itemName").value = data.item || "";
+              document.getElementById("description").value = data.desc || "";
+              document.getElementById("location").value = data.location || "";
+              document.getElementById("success").textContent = "✅ 掃描成功";
+            } else {
+              document.getElementById("success").textContent = "⚠️ 無資料";
+            }
 
-  document.getElementById("itemName").value = data.item || "";
-  document.getElementById("description").value = data.desc || "";
-  document.getElementById("location").value = data.location || "";
-
-  document.getElementById("success").textContent = "✅ 掃描成功";
-  stopScanner();
-},
+            stopScanner();
+          },
           err => console.warn("掃描錯誤", err)
         );
       } catch (err) {
@@ -133,10 +137,10 @@ async text => {
     }
 
     function stopScanner() {
-      if (html5QrCode) {
+      if (html5QrCode && html5QrCode._isScanning) {
         html5QrCode.stop().then(() => {
           document.getElementById("reader").innerHTML = "";
-        });
+        }).catch(err => console.warn("停止掃描失敗", err));
       }
     }
 
