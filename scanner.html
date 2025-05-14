@@ -111,7 +111,7 @@
           { deviceId: { exact: selectedCameraId } },
           { fps: 10, qrbox: 250 },
           async text => {
-            const cleanText = text.replace(/['"\s\uFEFF\xA0]/g, '').trim().toUpperCase();
+            const cleanText = text.replace(/[^A-Z0-9\-]/gi, '').trim().toUpperCase();
             document.getElementById("item").value = cleanText;
 
             const res = await fetch(`${API_BASE}?action=getLocation&itemCode=${encodeURIComponent(cleanText)}`);
@@ -123,11 +123,11 @@
               document.getElementById("description").value = data.desc || "";
               document.getElementById("location").value = data.location || "";
               document.getElementById("success").textContent = "✅ 掃描成功";
+              stopScanner();
             } else {
               document.getElementById("success").textContent = "⚠️ 無資料";
+              stopScanner();
             }
-
-            stopScanner();
           },
           err => console.warn("掃描錯誤", err)
         );
