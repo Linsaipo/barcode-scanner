@@ -56,7 +56,7 @@
   <button onclick="submitForm()">送出</button>
 
   <script>
-    const API_BASE = "https://script.google.com/macros/s/AKfycbz5SKPis-ugk9bVsOFrOKh97eMA0FYO36ZD1g9su-2LTkWDaELDOK5iVuV5zJarRssyQw/exec";
+    const API_BASE = "https://script.google.com/macros/s/AKfycbwdssFq_lSIJL097meZZlXDHtMkawLUj45JVESB7VvcMeZRYhrsCy4JBAHJDIBbhf-vag/exec";
     let html5QrCode;
     let selectedCameraId = null;
 
@@ -111,10 +111,12 @@
           { deviceId: { exact: selectedCameraId } },
           { fps: 10, qrbox: 250 },
           async text => {
-            const cleanText = text.replace(/[^A-Z0-9\-]/gi, '').trim().toUpperCase();
+            const cleanText = text.replace(/[^ -~]/g, '').trim().toUpperCase();
 
             if (html5QrCode && html5QrCode._isScanning) {
               await html5QrCode.stop();
+              await html5QrCode.clear();
+              html5QrCode = null;
               document.getElementById("reader").innerHTML = "";
             }
 
@@ -143,6 +145,8 @@
     function stopScanner() {
       if (html5QrCode && html5QrCode._isScanning) {
         html5QrCode.stop().then(() => {
+          html5QrCode.clear();
+          html5QrCode = null;
           document.getElementById("reader").innerHTML = "";
         }).catch(err => console.warn("停止掃描失敗", err));
       }
