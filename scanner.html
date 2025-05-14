@@ -56,7 +56,7 @@
   <button onclick="submitForm()">送出</button>
 
   <script>
-    const API_BASE = "https://script.google.com/macros/s/AKfycbwW5U3fUU3tudlLXCHWDSLC4Vj8McyBTypG7Hf30T2i_ll8NrAYRjeIFfRoFv5u7EHxng/exec";
+    const API_BASE = "https://script.google.com/macros/s/AKfycbwq_UepQEodz_tjV4CjOb-TLkT1ppF06D90n-VoCXOuYU6O-va1USawEB5oNUZOLk-Mtw/exec";
     let html5QrCode;
     let selectedCameraId = null;
 
@@ -112,6 +112,12 @@
           { fps: 10, qrbox: 250 },
           async text => {
             const cleanText = text.replace(/[^A-Z0-9\-]/gi, '').trim().toUpperCase();
+
+            if (html5QrCode && html5QrCode._isScanning) {
+              await html5QrCode.stop();
+              document.getElementById("reader").innerHTML = "";
+            }
+
             document.getElementById("item").value = cleanText;
 
             const res = await fetch(`${API_BASE}?action=getLocation&itemCode=${encodeURIComponent(cleanText)}`);
@@ -123,10 +129,8 @@
               document.getElementById("description").value = data.desc || "";
               document.getElementById("location").value = data.location || "";
               document.getElementById("success").textContent = "✅ 掃描成功";
-              stopScanner();
             } else {
               document.getElementById("success").textContent = "⚠️ 無資料";
-              stopScanner();
             }
           },
           err => console.warn("掃描錯誤", err)
