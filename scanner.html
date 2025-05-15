@@ -57,11 +57,12 @@
       font-size: 1.3em;
     }
     .inline-group input {
+      flex: 1;
+      min-width: 0;
       width: 100%;
       border: none;
       outline: none;
       font-size: 1em;
-      flex: 1;
     }
   </style>
 </head>
@@ -103,6 +104,7 @@
   <select id="cameraSelect" class="small"></select>
   <button onclick="startScanner()" class="small">開始掃描</button>
   <button onclick="stopScanner()" class="small">停止掃描</button>
+
 
   <script>
     const API_BASE = "https://script.google.com/macros/s/AKfycbwq_UepQEodz_tjV4CjOb-TLkT1ppF06D90n-VoCXOuYU6O-va1USawEB5oNUZOLk-Mtw/exec";
