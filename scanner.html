@@ -26,6 +26,7 @@
       height: 200px;
       overflow: hidden;
       position: relative;
+      display: inline-block;
     }
     #reader video {
       position: absolute;
@@ -39,13 +40,23 @@
     #reader.hidden {
       display: none;
     }
+    #flashToggleBtn {
+      display: inline-block;
+      vertical-align: top;
+      margin-left: 10px;
+      height: 40px;
+    }
     .small {
       font-size: 1em !important;
     }
   </style>
 </head>
 <body>
-  <div id="reader"></div>
+  <div style="text-align: center;">
+    <div id="reader"></div>
+    <button id="flashToggleBtn" class="small" onclick="toggleFlashlight()">閃光燈</button>
+  </div>
+
   <div id="success" style="color:green; font-weight:bold;"></div>
   <div id="error" style="color:red; font-weight:bold;"></div>
 
@@ -71,14 +82,29 @@
   <input type="text" id="note">
   <button onclick="submitForm()">送出</button>
 
+  
   <select id="cameraSelect" class="small"></select>
   <button onclick="startScanner()" class="small">開始掃描</button>
   <button onclick="stopScanner()" class="small">停止掃描</button>
- 
+
+
   <script>
     const API_BASE = "https://script.google.com/macros/s/AKfycbwq_UepQEodz_tjV4CjOb-TLkT1ppF06D90n-VoCXOuYU6O-va1USawEB5oNUZOLk-Mtw/exec";
     let html5QrCode;
     let selectedCameraId = null;
+    let isTorchOn = false;
+
+    async function toggleFlashlight() {
+      if (html5QrCode && html5QrCode.applyVideoConstraints) {
+        try {
+          await html5QrCode.applyVideoConstraints({ advanced: [{ torch: !isTorchOn }] });
+          isTorchOn = !isTorchOn;
+          document.getElementById("flashToggleBtn").textContent = isTorchOn ? "關閉閃光燈" : "開啟閃光燈";
+        } catch (err) {
+          console.warn("閃光燈切換失敗：", err);
+        }
+      }
+    }
 
     async function safelyStopScanner() {
       if (html5QrCode) {
