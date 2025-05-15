@@ -36,6 +36,9 @@
       width: 200px;
       height: 200px;
     }
+    #reader.hidden {
+      display: none;
+    }
   </style>
 </head>
 <body>
@@ -72,6 +75,58 @@
     const API_BASE = "https://script.google.com/macros/s/AKfycbwq_UepQEodz_tjV4CjOb-TLkT1ppF06D90n-VoCXOuYU6O-va1USawEB5oNUZOLk-Mtw/exec";
     let html5QrCode;
     let selectedCameraId = null;
+
+    async function safelyStopScanner() {
+      if (html5QrCode) {
+        try {
+          await html5QrCode.stop();
+          await html5QrCode.clear();
+        } catch (err) {
+          console.warn("停止掃描器錯誤：", err);
+        }
+        html5QrCode = null;
+        document.getElementById("reader").innerHTML = "";
+        document.getElementById("reader").classList.add("hidden");
+      }
+    }
+
+    async function startScanner() {
+      if (!selectedCameraId) return;
+      document.getElementById("reader").classList.remove("hidden");
+      html5QrCode = new Html5Qrcode("reader");
+      try {
+        await html5QrCode.start(
+          { deviceId: { exact: selectedCameraId } },
+          { fps: 10, qrbox: 250 },
+          async text => {
+            const cleanText = text.replace(/[^ -~]/g, '').trim().toUpperCase();
+            document.getElementById("item").value = cleanText;
+
+            const res = await fetch(`${API_BASE}?action=getLocation&itemCode=${encodeURIComponent(cleanText)}`);
+            const data = await res.json();
+            console.log("取得資料：", data);
+
+            if (data.item !== undefined) {
+              document.getElementById("itemName").value = data.item || "";
+              document.getElementById("description").value = data.desc || "";
+              document.getElementById("location").value = data.location || "";
+              document.getElementById("success").textContent = "✅ 掃描成功";
+            } else {
+              document.getElementById("success").textContent = "⚠️ 無資料";
+            }
+
+            await safelyStopScanner();
+          },
+          err => console.warn("掃描錯誤", err)
+        );
+      } catch (err) {
+        console.error("掃描器啟動錯誤", err);
+      }
+    }
+
+    function stopScanner() {
+      safelyStopScanner();
+    }
 
     async function loadStaffList() {
       try {
@@ -116,57 +171,7 @@
       }
     }
 
-    async function safelyStopScanner() {
-      if (html5QrCode) {
-        try {
-          await html5QrCode.stop();
-          await html5QrCode.clear();
-        } catch (err) {
-          console.warn("停止掃描器錯誤：", err);
-        }
-        html5QrCode = null;
-        document.getElementById("reader").innerHTML = "";
-      }
-    }
-
-    async function startScanner() {
-      if (!selectedCameraId) return;
-      html5QrCode = new Html5Qrcode("reader");
-      try {
-        await html5QrCode.start(
-          { deviceId: { exact: selectedCameraId } },
-          { fps: 10, qrbox: 250 },
-          async text => {
-            const cleanText = text.replace(/[^ -~]/g, '').trim().toUpperCase();
-            document.getElementById("item").value = cleanText;
-
-            const res = await fetch(`${API_BASE}?action=getLocation&itemCode=${encodeURIComponent(cleanText)}`);
-            const data = await res.json();
-            console.log("取得資料：", data);
-
-            if (data.item !== undefined) {
-              document.getElementById("itemName").value = data.item || "";
-              document.getElementById("description").value = data.desc || "";
-              document.getElementById("location").value = data.location || "";
-              document.getElementById("success").textContent = "✅ 掃描成功";
-            } else {
-              document.getElementById("success").textContent = "⚠️ 無資料";
-            }
-
-            await safelyStopScanner();
-          },
-          err => console.warn("掃描錯誤", err)
-        );
-      } catch (err) {
-        console.error("掃描器啟動錯誤", err);
-      }
-    }
-
-    function stopScanner() {
-      safelyStopScanner();
-    }
-
-    function submitForm() {
+    async function submitForm() {
       const staff = document.getElementById("staff").value.trim();
       const itemCode = document.getElementById("item").value.trim();
       const itemName = document.getElementById("itemName").value.trim();
