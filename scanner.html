@@ -49,6 +49,19 @@
     .small {
       font-size: 1em !important;
     }
+    .inline-group {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-top: 10px;
+      font-size: 1.5em;
+    }
+    .inline-group input {
+      border: none;
+      outline: none;
+      font-size: 1em;
+      flex: 1;
+    }
   </style>
 </head>
 <body>
@@ -69,9 +82,13 @@
   <label for="itemName">財產名稱：</label>
   <input type="text" id="itemName" readonly>
 
-  <label for="description">描述：</label> <input type="text" id="description" readonly>
+  <label for="description">描述：</label>
+  <input type="text" id="description" readonly>
 
-  <label for="location">目前位置：</label> <input type="text" id="location">
+  <div class="inline-group">
+    <label for="location">目前位置：</label>
+    <input type="text" id="location">
+  </div>
 
   <label for="to">移至位置：</label>
   <select id="to"><option value="">載入中...</option></select>
@@ -80,7 +97,6 @@
   <input type="text" id="note">
   <button onclick="submitForm()">送出</button>
 
-  
   <select id="cameraSelect" class="small"></select>
   <button onclick="startScanner()" class="small">開始掃描</button>
   <button onclick="stopScanner()" class="small">停止掃描</button>
