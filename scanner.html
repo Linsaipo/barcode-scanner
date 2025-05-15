@@ -15,26 +15,39 @@
       margin-top: 10px;
       width: 100%;
       max-width: 400px;
-      font-size: 1.5em; /* 所有欄位字體放大 */
+      font-size: 1.5em;
     }
     label[for="cameraSelect"] {
-      font-size: 1em !important; /* 選擇鏡頭這行字保持原大小 */
+      font-size: 1em !important;
     }
     #reader {
       margin: 20px auto;
-      width: 300px;   /* 調整掃描視窗寬度 */
-      height: 200px;  /* 調整掃描視窗高度 */
+      width: 200px;
+      height: 200px;
+      overflow: hidden;
+      position: relative;
+    }
+    #reader video {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      object-fit: cover;
+      width: 200px;
+      height: 200px;
     }
   </style>
 </head>
 <body>
+  <label for="cameraSelect">🎥 選擇鏡頭：</label>
+  <select id="cameraSelect"></select>
+
   <div id="reader"></div>
   <div id="success" style="color:green; font-weight:bold;"></div>
   <div id="error" style="color:red; font-weight:bold;"></div>
-  <select id="cameraSelect"></select>
+
   <label for="staff">員工：</label>
   <select id="staff"></select>
-  
 
   <label for="item">財產編號：</label>
   <input type="text" id="item" readonly>
