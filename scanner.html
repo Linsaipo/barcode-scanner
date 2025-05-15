@@ -39,9 +39,6 @@
   </style>
 </head>
 <body>
-  <label for="cameraSelect">🎥 選擇鏡頭：</label>
-  <select id="cameraSelect"></select>
-
   <div id="reader"></div>
   <div id="success" style="color:green; font-weight:bold;"></div>
   <div id="error" style="color:red; font-weight:bold;"></div>
@@ -66,7 +63,7 @@
 
   <label for="note">備註：</label>
   <input type="text" id="note">
-
+  <select id="cameraSelect"></select>
   <button onclick="startScanner()">開始掃描</button>
   <button onclick="stopScanner()">停止掃描</button>
   <button onclick="submitForm()">送出</button>
