@@ -1,81 +1,81 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset=\"UTF-8\">
+  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">
   <title>條碼掃描測試</title>
-  <script src="https://unpkg.com/html5-qrcode@2.3.4/html5-qrcode.min.js"></script>
-<style>
-  body {
-    font-family: Arial, sans-serif;
-    padding: 20px;
-  }
-  label, select, input, button {
-    display: block;
-    margin-top: 10px;
-    width: 100%;
-    max-width: 400px;
-    font-size: 1.3em;
-  }
-  label[for="cameraSelect"] {
-    font-size: 1em !important;
-  }
-  #reader {
-    margin: 20px auto;
-    width: 300px; /* 寬高大於 qrbox */
-    height: 300px;
-  }
-  #reader.hidden {
-    display: none;
-  }
-  #flashToggleBtn {
-    display: inline-block;
-    vertical-align: top;
-    margin-left: 10px;
-    height: 40px;
-  }
-  .small {
-    font-size: 1em !important;
-  }
-</style>
+  <script src=\"https://unpkg.com/html5-qrcode@2.3.4/html5-qrcode.min.js\"></script>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      padding: 20px;
+    }
+    label, select, input, button {
+      display: block;
+      margin-top: 10px;
+      width: 100%;
+      max-width: 400px;
+      font-size: 1.3em;
+    }
+    label[for=\"cameraSelect\"] {
+      font-size: 1em !important;
+    }
+    #reader {
+      margin: 20px auto;
+      width: 300px;
+      height: 300px;
+    }
+    #reader.hidden {
+      display: none;
+    }
+    #flashToggleBtn {
+      display: inline-block;
+      vertical-align: top;
+      margin-left: 10px;
+      height: 40px;
+    }
+    .small {
+      font-size: 1em !important;
+    }
+  </style>
 </head>
 <body>
-  <div style="text-align: center;">
-    <div id="reader"></div>
-    <button id="flashToggleBtn" class="small" onclick="toggleFlashlight()">閃光燈</button>
+  <div style=\"text-align: center;\">
+    <div id=\"reader\"></div>
+    <button id=\"flashToggleBtn\" class=\"small\" onclick=\"toggleFlashlight()\">閃光燈</button>
   </div>
 
-  <div id="success" style="color:green; font-weight:bold;"></div>
-  <div id="error" style="color:red; font-weight:bold;"></div>
+  <div id=\"success\" style=\"color:green; font-weight:bold;\"></div>
+  <div id=\"error\" style=\"color:red; font-weight:bold;\"></div>
 
-  <label for="staff">員工：</label>
-  <select id="staff"></select>
+  <label for=\"staff\">員工：</label>
+  <select id=\"staff\"></select>
 
-  <label for="item">財產編號：</label>
-  <input type="text" id="item" readonly>
+  <label for=\"item\">財產編號：</label>
+  <input type=\"text\" id=\"item\" readonly>
 
-  <label for="itemName">財產名稱：</label>
-  <input type="text" id="itemName" readonly>
+  <label for=\"itemName\">財產名稱：</label>
+  <input type=\"text\" id=\"itemName\" readonly>
 
-  <label for="description">描述：</label>
-  <input type="text" id="description" readonly>
+  <label for=\"description\">描述：</label>
+  <input type=\"text\" id=\"description\" readonly>
 
-  <label for="location">目前位置：</label>
-  <input type="text" id="location" readonly>
+  <label for=\"location\">目前位置：</label>
+  <input type=\"text\" id=\"location\" readonly>
 
-  <label for="to">移至位置：</label>
-  <select id="to"><option value="">載入中...</option></select>
+  <label for=\"to\">移至位置：</label>
+  <select id=\"to\"><option value=\"\">載入中...</option></select>
 
-  <label for="note">備註：</label>
-  <input type="text" id="note">
-  <button onclick="submitForm()">送出</button>
+  <label for=\"note\">備註：</label>
+  <input type=\"text\" id=\"note\">
+  <button onclick=\"submitForm()\">送出</button>
 
-  <select id="cameraSelect" class="small"></select>
-  <button onclick="startScanner()" class="small">開始掃描</button>
-  <button onclick="stopScanner()" class="small">停止掃描</button>
+  <select id=\"cameraSelect\" class=\"small\"></select>
+  <button onclick=\"startScanner()\" class=\"small\">開始掃描</button>
+  <button onclick=\"stopScanner()\" class=\"small\">停止掃描</button>
 
   <script>
-    const API_BASE = "https://script.google.com/macros/s/AKfycbwq_UepQEodz_tjV4CjOb-TLkT1ppF06D90n-VoCXOuYU6O-va1USawEB5oNUZOLk-Mtw/exec";
+    const API_BASE = \"https://script.google.com/macros/s/AKfycbwq_UepQEodz_tjV4CjOb-TLkT1ppF06D90n-VoCXOuYU6O-va1USawEB5oNUZOLk-Mtw/exec\";
     let html5QrCode;
     let selectedCameraId = null;
     let isTorchOn = false;
@@ -85,164 +85,64 @@
         try {
           await html5QrCode.applyVideoConstraints({ advanced: [{ torch: !isTorchOn }] });
           isTorchOn = !isTorchOn;
-          document.getElementById("flashToggleBtn").textContent = isTorchOn ? "關閉閃光燈" : "開啟閃光燈";
+          document.getElementById(\"flashToggleBtn\").textContent = isTorchOn ? \"關閉閃光燈\" : \"開啟閃光燈\";
         } catch (err) {
-          console.warn("閃光燈切換失敗：", err);
+          console.warn(\"閃光燈切換失敗：\", err);
         }
       }
     }
-    
+
     async function safelyStopScanner() {
       if (html5QrCode) {
         try {
           await html5QrCode.stop();
           await html5QrCode.clear();
         } catch (err) {
-          console.warn("停止掃描器錯誤：", err);
+          console.warn(\"停止掃描器錯誤：\", err);
         }
         html5QrCode = null;
-        document.getElementById("reader").innerHTML = "";
-        document.getElementById("reader").classList.add("hidden");
+        document.getElementById(\"reader\").innerHTML = \"\";
+        document.getElementById(\"reader\").classList.add(\"hidden\");
       }
     }
 
     async function startScanner() {
       if (!selectedCameraId) return;
-      document.getElementById("reader").classList.remove("hidden");
-      html5QrCode = new Html5Qrcode("reader");
+      document.getElementById(\"reader\").classList.remove(\"hidden\");
+      html5QrCode = new Html5Qrcode(\"reader\");
       try {
         await html5QrCode.start(
           { deviceId: { exact: selectedCameraId } },
           { fps: 10, qrbox: 250 },
           async text => {
             const cleanText = text.replace(/[^ -~]/g, '').trim().toUpperCase();
-            document.getElementById("item").value = cleanText;
+            document.getElementById(\"item\").value = cleanText;
 
             const res = await fetch(`${API_BASE}?action=getLocation&itemCode=${encodeURIComponent(cleanText)}`);
             const data = await res.json();
-            console.log("取得資料：", data);
 
             if (data.item !== undefined) {
-              document.getElementById("itemName").value = data.item || "";
-              document.getElementById("description").value = data.desc || "";
-              document.getElementById("location").value = data.location || "";
-              document.getElementById("success").textContent = "✅ 掃描成功";
+              document.getElementById(\"itemName\").value = data.item || \"\";
+              document.getElementById(\"description\").value = data.desc || \"\";
+              document.getElementById(\"location\").value = data.location || \"\";
+              document.getElementById(\"success\").textContent = \"✅ 掃描成功\";
             } else {
-              document.getElementById("success").textContent = "⚠️ 無資料";
+              document.getElementById(\"success\").textContent = \"⚠️ 無資料\";
             }
 
             await safelyStopScanner();
           },
-          err => console.warn("掃描錯誤", err)
+          err => console.warn(\"掃描錯誤\", err)
         );
       } catch (err) {
-        console.error("掃描器啟動錯誤", err);
+        console.error(\"掃描器啟動錯誤\", err);
       }
-    }
-
-    function stopScanner() {
-      safelyStopScanner();
-    }
-
-    async function loadStaffList() {
-      try {
-        const res = await fetch(`${API_BASE}?action=getStaffList`);
-        const data = await res.json();
-        const staffSelect = document.getElementById("staff");
-        staffSelect.innerHTML = '<option value="">請選擇</option>' +
-          data.map(name => `<option value="${name}">${name}</option>`).join("");
-      } catch (err) {
-        console.error("載入員工失敗", err);
-      }
-    }
-
-    async function loadWarehouseList() {
-      try {
-        const res = await fetch(`${API_BASE}?action=getWarehouseList`);
-        const data = await res.json();
-        const toSelect = document.getElementById("to");
-        if (Array.isArray(data)) {
-          toSelect.innerHTML = '<option value="">請選擇</option>' +
-            data.map(name => `<option value="${name}">${name}</option>`).join("");
-        } else {
-          toSelect.innerHTML = '<option value="">讀取錯誤</option>';
-        }
-      } catch (err) {
-        console.error("載入倉庫失敗", err);
-        document.getElementById("to").innerHTML = '<option value="">錯誤</option>';
-      }
-    }
-
-    async function loadCameraList() {
-      try {
-        const devices = await Html5Qrcode.getCameras();
-        const cameraSelect = document.getElementById("cameraSelect");
-        if (devices.length === 0) throw new Error("找不到相機");
-        cameraSelect.innerHTML = devices.map(d => `<option value="${d.id}">${d.label || "未命名鏡頭"}</option>`).join("");
-        const rear = devices.find(d => /rear|後/i.test(d.label));
-        selectedCameraId = rear ? rear.id : devices[0].id;
-        cameraSelect.value = selectedCameraId;
-      } catch (err) {
-        console.error("相機載入失敗", err);
-      }
-    }
-
-    async function submitForm() {
-      const staff = document.getElementById("staff").value.trim();
-      const itemCode = document.getElementById("item").value.trim();
-      const itemName = document.getElementById("itemName").value.trim();
-      const location = document.getElementById("location").value.trim();
-      const to = document.getElementById("to").value.trim();
-      const note = document.getElementById("note").value.trim();
-
-      if (!staff || !itemName || !itemCode) {
-        document.getElementById("error").textContent = "❌ 員工、財產名稱與財產編號為必填欄位";
-        return;
-      }
-
-      fetch(API_BASE, {
-        method: "POST",
-        headers: { "Content-Type": "application/x-www-form-urlencoded" },
-        body: new URLSearchParams({
-          action: "submitForm",
-          staff, item: itemName, itemCode, location, to, note
-        })
-      })
-        .then(res => res.json())
-        .then(data => {
-          if (data.result === "success") {
-            document.getElementById("success").textContent = "✅ 寫入成功";
-            document.getElementById("error").textContent = "";
-
-            document.getElementById("item").value = "";
-            document.getElementById("itemName").value = "";
-            document.getElementById("description").value = "";
-            document.getElementById("location").value = "";
-            document.getElementById("to").value = "";
-            document.getElementById("note").value = "";
-            document.getElementById("staff").value = "";
-
-            setTimeout(() => startScanner(), 500);
-          } else {
-            document.getElementById("error").textContent = "❌ 寫入失敗：「" + data.message + "」";
-          }
-        })
-        .catch(err => {
-          document.getElementById("error").textContent = "❌ 發送錯誤";
-          console.error(err);
-        });
     }
 
     window.onload = async () => {
-      await loadCameraList();
+      const devices = await Html5Qrcode.getCameras();
+      selectedCameraId = devices[0]?.id;
       startScanner();
-      await loadStaffList();
-      await loadWarehouseList();
-      document.getElementById("cameraSelect").addEventListener("change", async (e) => {
-        selectedCameraId = e.target.value;
-        stopScanner();
-        setTimeout(startScanner, 300);
-      });
     };
   </script>
 </body>
