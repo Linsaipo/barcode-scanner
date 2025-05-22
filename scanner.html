@@ -5,49 +5,39 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>條碼掃描測試</title>
   <script src="https://unpkg.com/html5-qrcode@2.3.4/html5-qrcode.min.js"></script>
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      padding: 20px;
-    }
-    label, select, input, button {
-      display: block;
-      margin-top: 10px;
-      width: 100%;
-      max-width: 400px;
-      font-size: 1.3em;
-    }
-    label[for="cameraSelect"] {
-      font-size: 1em !important;
-    }
-#reader {
-  margin: 20px auto;
-  width: 300px; /* 確保寬高大於qrbox */
-  height: 300px;
-}await html5QrCode.start(
-  { deviceId: { exact: selectedCameraId } },
-  { fps: 10, qrbox: 250 },
-  async text => { /* ... */ },
-  err => console.warn("掃描錯誤", err)
-);await html5QrCode.start(
-  { deviceId: { exact: selectedCameraId } },
-  { fps: 10, qrbox: 250 },
-  async text => { /* ... */ },
-  err => console.warn("掃描錯誤", err)
-);
-    #reader.hidden {
-      display: none;
-    }
-    #flashToggleBtn {
-      display: inline-block;
-      vertical-align: top;
-      margin-left: 10px;
-      height: 40px;
-    }
-    .small {
-      font-size: 1em !important;
-    }
-  </style>
+<style>
+  body {
+    font-family: Arial, sans-serif;
+    padding: 20px;
+  }
+  label, select, input, button {
+    display: block;
+    margin-top: 10px;
+    width: 100%;
+    max-width: 400px;
+    font-size: 1.3em;
+  }
+  label[for="cameraSelect"] {
+    font-size: 1em !important;
+  }
+  #reader {
+    margin: 20px auto;
+    width: 300px; /* 寬高大於 qrbox */
+    height: 300px;
+  }
+  #reader.hidden {
+    display: none;
+  }
+  #flashToggleBtn {
+    display: inline-block;
+    vertical-align: top;
+    margin-left: 10px;
+    height: 40px;
+  }
+  .small {
+    font-size: 1em !important;
+  }
+</style>
 </head>
 <body>
   <div style="text-align: center;">
@@ -101,7 +91,7 @@
         }
       }
     }
-
+    
     async function safelyStopScanner() {
       if (html5QrCode) {
         try {
