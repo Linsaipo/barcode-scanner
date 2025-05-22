@@ -22,21 +22,19 @@
     }
 #reader {
   margin: 20px auto;
-  width: 300px;
+  width: 300px; /* 確保寬高大於qrbox */
   height: 300px;
-  overflow: hidden;
-  position: relative;
-  display: inline-block;
-}
-#reader video {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  object-fit: cover;
-  width: 300px;
-  height: 300px;
-}
+}await html5QrCode.start(
+  { deviceId: { exact: selectedCameraId } },
+  { fps: 10, qrbox: 250 },
+  async text => { /* ... */ },
+  err => console.warn("掃描錯誤", err)
+);await html5QrCode.start(
+  { deviceId: { exact: selectedCameraId } },
+  { fps: 10, qrbox: 250 },
+  async text => { /* ... */ },
+  err => console.warn("掃描錯誤", err)
+);
     #reader.hidden {
       display: none;
     }
