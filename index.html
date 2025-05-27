@@ -1,368 +1,130 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>條碼掃描測試</title>
-  <script src="https://unpkg.com/html5-qrcode@2.3.4/html5-qrcode.min.js"></script>
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      padding: 20px;
-    }
-    label, select, input, button {
-      display: block;
-      margin-top: 10px;
-      width: 100%;
-      max-width: 400px;
-      font-size: 1.3em;
-    }
-    label[for="cameraSelect"] {
-      font-size: 1em !important;
-    }
-    #reader {
-      margin: 20px auto;
-      width: 300px;
-      height: 300px;
-    }
-    #reader.hidden {
-      display: none;
-    }
-    #flashToggleBtn {
-      display: inline-block;
-      vertical-align: top;
-      margin-left: 10px;
-      height: 40px;
-    }
-    .small {
-      font-size: 1em !important;
-    }
-  </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>財產編號手動搜尋</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      padding: 20px;
+    }
+    label, select, input, button {
+      display: block;
+      margin-top: 10px;
+      width: 100%;
+      max-width: 400px;
+      font-size: 1.3em;
+    }
+    #success {
+      color: green;
+      font-weight: bold;
+    }
+    #error {
+      color: red;
+      font-weight: bold;
+    }
+  </style>
 </head>
 <body>
-  <div style="text-align: center;">
-    <div id="reader"></div>
-    <button id="flashToggleBtn" class="small" onclick="toggleFlashlight()">閃光燈</button>
-  </div>
 
-  <div id="success" style="color:green; font-weight:bold;"></div>
-  <div id="error" style="color:red; font-weight:bold;"></div>
+  <div id="success"></div>
+  <div id="error"></div>
 
-  <label for="staff">員工：</label>
-  <select id="staff"></select>
+  <label for="staff">員工：</label>
+  <select id="staff"><option value="">載入中...</option></select>
 
-  <label for="item">財產編號：</label>
-  <input type="text" id="item" readonly>
+  <label for="item">財產編號：</label>
+  <input type="text" id="item" list="itemList">
+  <datalist id="itemList"></datalist>
 
-  <label for="itemName">財產名稱：</label>
-  <input type="text" id="itemName" readonly>
+  <label for="itemName">財產名稱：</label>
+  <input type="text" id="itemName" readonly>
 
-  <label for="description">描述：</label>
-  <input type="text" id="description" readonly>
+  <label for="description">描述：</label>
+  <input type="text" id="description" readonly>
 
-  <label for="location">目前位置：</label>
-  <input type="text" id="location" readonly>
+  <label for="location">目前位置：</label>
+  <input type="text" id="location" readonly>
 
-  <label for="to">移至位置：</label>
-  <select id="to"><option value="">載入中...</option></select>
+  <label for="to">移至位置：</label>
+  <select id="to"><option value="">載入中...</option></select>
 
-  <label for="note">備註：</label>
-  <input type="text" id="note">
-  <button onclick="submitForm()">送出</button>
+  <label for="note">備註：</label>
+  <input type="text" id="note">
 
-  <select id="cameraSelect" class="small"></select>
-  <button onclick="startScanner()" class="small">開始掃描</button>
-  <button onclick="stopScanner()" class="small">停止掃描</button>
+  <button onclick="submitForm()">送出</button>
 
-  <script>
-    // API 基礎 URL，請確保您的 Google Apps Script 已正確部署為 Web App
-    // 部署時，"執行身分" 應為 "我"，"誰可以存取" 應為 "任何人"。
-    // 每次修改程式碼後，都需要重新部署一個「新版本」。
-    const API_BASE = "https://script.google.com/macros/s/AKfycbwq_UepQEodz_tjV4CjOb-TLkT1ppF06D90n-VoCXOuYU6O-va1USawEB5oNUZOLk-Mtw/exec";
-    let html5QrCode;
-    let selectedCameraId = null;
-    let isTorchOn = false;
+  <script>
+    const API_BASE = "https://script.google.com/macros/s/AKfycbwq_UepQEodz_tjV4CjOb-TLkT1ppF06D90n-VoCXOuYU6O-va1USawEB5oNUZOLk-Mtw/exec";
 
-    // 清除所有提示訊息
-    function clearMessages() {
-      document.getElementById("success").textContent = "";
-      document.getElementById("error").textContent = "";
-    }
+    async function loadStaff() {
+      const res = await fetch(`${API_BASE}?action=getStaffList`);
+      const staff = await res.json();
+      document.getElementById("staff").innerHTML = staff.map(s => `<option>${s}</option>`).join("");
+    }
 
-    // 切換閃光燈
-    async function toggleFlashlight() {
-      if (html5QrCode && html5QrCode.applyVideoConstraints) {
-        try {
-          await html5QrCode.applyVideoConstraints({ advanced: [{ torch: !isTorchOn }] });
-          isTorchOn = !isTorchOn;
-          document.getElementById("flashToggleBtn").textContent = isTorchOn ? "關閉閃光燈" : "開啟閃光燈";
-        } catch (err) {
-          console.warn("閃光燈切換失敗：", err);
-          document.getElementById("error").textContent = "❌ 閃光燈功能不可用或切換失敗。";
-        }
-      } else {
-        document.getElementById("error").textContent = "❌ 掃描器未啟動或不支持閃光燈。";
-      }
-    }
+    async function loadLocations() {
+      const res = await fetch(`${API_BASE}?action=getWarehouseList`);
+      const locations = await res.json();
+      document.getElementById("to").innerHTML = locations.map(l => `<option>${l}</option>`).join("");
+    }
 
-    // 安全地停止掃描器
-    async function safelyStopScanner() {
-      if (html5QrCode) {
-        try {
-          await html5QrCode.stop();
-          await html5QrCode.clear();
-        } catch (err) {
-          console.warn("停止掃描器錯誤：", err);
-          // 不將此作為致命錯誤顯示在頁面上，因為掃描器可能已經停止
-        }
-        html5QrCode = null;
-        document.getElementById("reader").innerHTML = "";
-        document.getElementById("reader").classList.add("hidden");
-        // 重置閃光燈按鈕文字
-        isTorchOn = false;
-        document.getElementById("flashToggleBtn").textContent = "開啟閃光燈";
-      }
-    }
+    async function loadItemList() {
+      const res = await fetch(`${API_BASE}?action=getItemList`);
+      const items = await res.json();
+      document.getElementById("itemList").innerHTML = items.map(item => `<option value="${item}">`).join("");
+    }
 
-    // 啟動掃描器
-    async function startScanner() {
-      clearMessages(); // 清除之前的訊息
+    async function getItemDetails(itemCode) {
+      const res = await fetch(`${API_BASE}?action=getLocation&itemCode=${encodeURIComponent(itemCode)}`);
+      const data = await res.json();
+      if (data.item !== undefined) {
+        document.getElementById("itemName").value = data.item;
+        document.getElementById("description").value = data.desc;
+        document.getElementById("location").value = data.location;
+      } else {
+        document.getElementById("itemName").value = "";
+        document.getElementById("description").value = "";
+        document.getElementById("location").value = "";
+      }
+    }
 
-      if (!selectedCameraId) {
-        document.getElementById("error").textContent = "❌ 請先選擇一個相機設備。";
-        return;
-      }
-      
-      // 如果掃描器已經啟動，先停止
-      await safelyStopScanner();
+    document.getElementById("item").addEventListener("change", (e) => {
+      getItemDetails(e.target.value);
+    });
 
-      document.getElementById("reader").classList.remove("hidden");
-      html5QrCode = new Html5Qrcode("reader");
-      try {
-        await html5QrCode.start(
-          { deviceId: { exact: selectedCameraId } },
-          { fps: 10, qrbox: 250 },
-          async text => {
-            clearMessages(); // 掃描成功後清除訊息
-            const cleanText = text.replace(/[^ -~]/g, '').trim().toUpperCase();
-            document.getElementById("item").value = cleanText;
+    async function submitForm() {
+      const staff = document.getElementById("staff").value;
+      const itemCode = document.getElementById("item").value;
+      const itemName = document.getElementById("itemName").value;
+      const location = document.getElementById("location").value;
+      const to = document.getElementById("to").value;
+      const note = document.getElementById("note").value;
 
-            try {
-              const res = await fetch(`${API_BASE}?action=getLocation&itemCode=${encodeURIComponent(cleanText)}`);
-              if (!res.ok) { // 檢查 HTTP 狀態碼
-                throw new Error(`HTTP 錯誤! 狀態: ${res.status}`);
-              }
-              const data = await res.json();
-              console.log("API 回應:", data); // 调试用，查看API回應
+      const res = await fetch(API_BASE, {
+        method: "POST",
+        headers: {"Content-Type": "application/x-www-form-urlencoded"},
+        body: new URLSearchParams({
+          action: "submitForm", staff, item: itemName, itemCode, location, to, note
+        })
+      });
 
-              if (data.item !== undefined) {
-                document.getElementById("itemName").value = data.item || "";
-                document.getElementById("description").value = data.desc || "";
-                document.getElementById("location").value = data.location || "";
-                document.getElementById("success").textContent = "✅ 掃描成功並載入資料";
-              } else {
-                document.getElementById("success").textContent = "⚠️ 掃描成功，但無對應資料";
-                // 清空相關欄位
-                document.getElementById("itemName").value = "";
-                document.getElementById("description").value = "";
-                document.getElementById("location").value = "";
-              }
-            } catch (apiErr) {
-              console.error("API 請求錯誤：", apiErr);
-              document.getElementById("error").textContent = `❌ API 請求失敗：${apiErr.message}`;
-              // 如果 API 請求失敗，也清空資料欄位
-              document.getElementById("itemName").value = "";
-              document.getElementById("description").value = "";
-              document.getElementById("location").value = "";
-            }
+      const result = await res.json();
+      if (result.result === "success") {
+        document.getElementById("success").textContent = "✅ 寫入成功";
+        document.getElementById("error").textContent = "";
+      } else {
+        document.getElementById("error").textContent = "❌ 寫入失敗";
+        document.getElementById("success").textContent = "";
+      }
+    }
 
-            // 掃描成功後停止掃描器
-            await safelyStopScanner();
-          },
-          err => {
-            // 這個錯誤回調會頻繁觸發，用於提示掃描進度或輕微錯誤，不適合立即停止或顯示嚴重錯誤
-            // console.warn("掃描中錯誤 (非致命):", err);
-          }
-        );
-      } catch (err) {
-        console.error("掃描器啟動錯誤:", err);
-        let errorMessage = "❌ 掃描器啟動失敗。";
-        if (err.name === "NotAllowedError") {
-          errorMessage += "請允許瀏覽器使用相機權限。";
-        } else if (err.name === "NotFoundError") {
-          errorMessage += "未找到相機設備。";
-        } else if (err.name === "NotReadableError") {
-          errorMessage += "相機可能被其他應用程式佔用或無法存取。";
-        } else if (err.name === "OverconstrainedError") {
-          errorMessage += "相機設定不符，請嘗試其他相機或刷新頁面。";
-        }
-        document.getElementById("error").textContent = errorMessage;
-        await safelyStopScanner(); // 啟動失敗也要清理
-      }
-    }
-
-    // 停止掃描器（手動按鈕）
-    async function stopScanner() {
-      clearMessages();
-      await safelyStopScanner();
-      document.getElementById("success").textContent = "掃描器已停止。";
-    }
-
-    // 載入員工下拉選單數據 (模擬)
-    async function loadStaff() {
-      const staffSelect = document.getElementById("staff");
-      staffSelect.innerHTML = "<option value=\"\">載入中...</option>";
-      // 這裡應該從 API 載入實際的員工資料
-      try {
-        // 範例：從 API_BASE 獲取員工列表
-        // const res = await fetch(`${API_BASE}?action=getStaff`);
-        // const staffData = await res.json();
-        
-        // 模擬數據
-        const staffData = [
-          { id: "EMP001", name: "張三" },
-          { id: "EMP002", name: "李四" },
-          { id: "EMP003", name: "王五" }
-        ];
-
-        staffSelect.innerHTML = "<option value=\"\">請選擇員工</option>";
-        staffData.forEach(staff => {
-          const option = document.createElement("option");
-          option.value = staff.id;
-          option.textContent = staff.name;
-          staffSelect.appendChild(option);
-        });
-      } catch (err) {
-        console.error("載入員工資料失敗:", err);
-        staffSelect.innerHTML = "<option value=\"\">載入員工失敗</option>";
-      }
-    }
-
-    // 載入位置下拉選單數據 (模擬)
-    async function loadLocations() {
-      const toSelect = document.getElementById("to");
-      toSelect.innerHTML = "<option value=\"\">載入中...</option>";
-      // 這裡應該從 API 載入實際的位置資料
-      try {
-        // 範例：從 API_BASE 獲取位置列表
-        // const res = await fetch(`${API_BASE}?action=getLocations`);
-        // const locationData = await res.json();
-
-        // 模擬數據
-        const locationData = [
-          { id: "LOC001", name: "辦公室A" },
-          { id: "LOC002", name: "倉庫B" },
-          { id: "LOC003", name: "會議室C" }
-        ];
-
-        toSelect.innerHTML = "<option value=\"\">請選擇移至位置</option>";
-        locationData.forEach(loc => {
-          const option = document.createElement("option");
-          option.value = loc.id;
-          option.textContent = loc.name;
-          toSelect.appendChild(option);
-        });
-      } catch (err) {
-        console.error("載入位置資料失敗:", err);
-        toSelect.innerHTML = "<option value=\"\">載入位置失敗</option>";
-      }
-    }
-
-    // 提交表單的函數 (目前僅為佔位符)
-    async function submitForm() {
-      clearMessages();
-      const staffId = document.getElementById("staff").value;
-      const itemCode = document.getElementById("item").value;
-      const toLocationId = document.getElementById("to").value;
-      const note = document.getElementById("note").value;
-
-      if (!staffId || !itemCode || !toLocationId) {
-        document.getElementById("error").textContent = "❌ 請填寫所有必填欄位 (員工、財產編號、移至位置)。";
-        return;
-      }
-
-      const formData = {
-        action: "moveItem", // 你的 Apps Script 應處理的動作
-        staffId: staffId,
-        itemCode: itemCode,
-        fromLocation: document.getElementById("location").value, // 當前位置
-        toLocation: toLocationId,
-        note: note
-      };
-
-      try {
-        const res = await fetch(API_BASE, {
-          method: "POST", // 或 GET，取決於你的 Apps Script 設置
-          contentType: "application/json",
-          body: JSON.stringify(formData)
-        });
-        if (!res.ok) {
-          throw new Error(`HTTP 錯誤! 狀態: ${res.status}`);
-        }
-        const result = await res.json();
-        if (result.status === "success") {
-          document.getElementById("success").textContent = "✅ 表單提交成功！";
-          // 提交成功後可以清空表單或做其他處理
-          // resetForm();
-        } else {
-          document.getElementById("error").textContent = `❌ 提交失敗: ${result.message || "未知錯誤"}`;
-        }
-      } catch (err) {
-        console.error("提交表單錯誤:", err);
-        document.getElementById("error").textContent = `❌ 表單提交失敗：${err.message}`;
-      }
-    }
-
-    // 頁面載入時執行
-    window.onload = async () => {
-      await loadStaff(); // 載入員工資料
-      await loadLocations(); // 載入位置資料
-      
-      const cameraSelect = document.getElementById("cameraSelect");
-      try {
-        const devices = await Html5Qrcode.getCameras();
-        console.log("偵測到的相機設備:", devices);
-        if (devices && devices.length) {
-          // 填充相機選擇下拉選單
-          cameraSelect.innerHTML = ""; // 清空現有選項
-          devices.forEach(device => {
-            const option = document.createElement("option");
-            option.value = device.id;
-            option.textContent = device.label || `Camera ${device.id}`;
-            cameraSelect.appendChild(option);
-          });
-          
-          selectedCameraId = devices[0].id; // 預設選擇第一個相機
-          cameraSelect.value = selectedCameraId; // 讓下拉選單顯示選中的相機
-
-          // 監聽相機選擇變化事件
-          cameraSelect.onchange = (event) => {
-            selectedCameraId = event.target.value;
-            console.log("選定的相機ID已更改為:", selectedCameraId);
-            // 不自動重啟掃描器，讓用戶手動點擊「開始掃描」
-            stopScanner(); // 停止當前掃描，準備使用新相機
-            clearMessages();
-            document.getElementById("success").textContent = "請點擊「開始掃描」以啟動選定的相機。";
-          };
-
-          // 初始啟動掃描器
-          startScanner(); 
-
-        } else {
-          console.error("❌ 未找到相機設備。");
-          document.getElementById("error").textContent = "❌ 未找到相機設備。請確認相機已連接並正常運作。";
-          cameraSelect.innerHTML = "<option value=\"\">無相機設備</option>";
-        }
-      } catch (err) {
-        console.error("取得相機設備時發生錯誤:", err);
-        let errorMessage = `❌ 無法取得相機設備：${err.name || err.message}。`;
-        if (err.name === "NotAllowedError") {
-          errorMessage += "請允許瀏覽器使用相機權限。";
-        }
-        document.getElementById("error").textContent = errorMessage;
-        cameraSelect.innerHTML = "<option value=\"\">錯誤：無法載入相機</option>";
-      }
-    };
-  </script>
+    window.onload = async () => {
+      await loadStaff();
+      await loadLocations();
+      await loadItemList();
+    };
+  </script>
 </body>
 </html>
