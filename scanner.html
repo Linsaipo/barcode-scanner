@@ -130,7 +130,9 @@
       const devices = await Html5Qrcode.getCameras();
       const cameraSelect = document.getElementById("cameraSelect");
       cameraSelect.innerHTML = devices.map(device => `<option value="${device.id}">${device.label}</option>`).join("");
-      selectedCameraId = devices[0]?.id;
+      const rearCamera = devices.find(device => /rear|後|back/i.test(device.label));
+      selectedCameraId = rearCamera ? rearCamera.id : devices[0]?.id;
+      cameraSelect.value = selectedCameraId;
       cameraSelect.onchange = () => {
         selectedCameraId = cameraSelect.value;
       };
