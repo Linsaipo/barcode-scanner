@@ -49,7 +49,7 @@
   <div id="error" style="color:red; font-weight:bold;"></div>
 
   <label for="staff">員工：</label>
-  <select id="staff"></select>
+  <select id="staff"><option value="">載入中...</option></select>
 
   <label for="item">財產編號：</label>
   <input type="text" id="item" readonly>
@@ -133,13 +133,25 @@
       const rearCamera = devices.find(device => /rear|後|back/i.test(device.label));
       selectedCameraId = rearCamera ? rearCamera.id : devices[0]?.id;
       cameraSelect.value = selectedCameraId;
-      cameraSelect.onchange = () => {
-        selectedCameraId = cameraSelect.value;
-      };
+      cameraSelect.onchange = () => selectedCameraId = cameraSelect.value;
+    }
+
+    async function loadStaff() {
+      const res = await fetch(`${API_BASE}?action=getStaffList`);
+      const staff = await res.json();
+      document.getElementById("staff").innerHTML = staff.map(s => `<option>${s}</option>`).join("");
+    }
+
+    async function loadLocations() {
+      const res = await fetch(`${API_BASE}?action=getWarehouseList`);
+      const locations = await res.json();
+      document.getElementById("to").innerHTML = locations.map(l => `<option>${l}</option>`).join("");
     }
 
     window.onload = async () => {
       await loadCameraList();
+      await loadStaff();
+      await loadLocations();
       await startScanner();
     };
   </script>
